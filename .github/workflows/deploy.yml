@@ -1,0 +1,86 @@
+# name: Deploy NestJS TypeORM API Starter V2 App to VPS
+
+# on:
+#   push:
+#     branches:
+#       - dev
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
+
+#       - name: Setup Node.js with caching
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: '20'
+#           cache: 'npm'
+#           cache-dependency-path: package-lock.json
+
+#       - name: Install dependencies with retry
+#         run: |
+#           n=0
+#           max_attempts=3
+#           until [ $n -ge $max_attempts ]
+#           do
+#             npm install && break
+#             n=$((n+1))
+#             echo "npm install attempt $n failed, retrying in 15 seconds..."
+#             sleep 15
+#           done
+#           if [ $n -ge $max_attempts ]; then
+#             echo "npm install failed after $max_attempts attempts"
+#             exit 1
+#           fi
+
+#       - name: Build application
+#         run: npm run build
+
+#       - name: Deploy to aaPanel
+#         uses: appleboy/ssh-action@master
+#         with:
+#           host: ${{ secrets.SSH_HOST }}
+#           username: ${{ secrets.SSH_USERNAME }}
+#           key: ${{ secrets.SSH_PRIVATE_KEY }}
+#           script: |
+#             # Add aaPanel Node.js and npm to PATH
+#             # Navigate to project directory
+#             cd /www/wwwroot/projects/${{ secrets.FOLDER_NAME }}
+
+#             sudo chown -R $USER:$USER .
+
+#             # Cleanup git locks
+#             rm -f .git/index.lock
+#             rm -f .git/FETCH_HEAD
+
+#             # This loads nvm
+#             export NVM_DIR="$HOME/.nvm"
+#             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+#             nvm install 20
+#             nvm use 20
+
+#             # Mark repo as safe
+#             git config --global --add safe.directory /www/wwwroot/projects/${{ secrets.FOLDER_NAME }}
+
+#             # Force reset to remote main (ignore local changes)
+#             git fetch origin dev
+#             git reset --hard origin/dev
+
+#             # Install dependencies with proper permissions
+#             npm install
+
+#             sudo chown -R $USER:$USER .
+#             chmod +x node_modules/.bin/*
+
+#             # Build application
+#             npm run build
+
+#             # Stop the pm2 process
+#             pm2 stop ${{ secrets.FOLDER_NAME }} || echo "No existing process found"
+
+#             # Restart the pm2 process
+#             pm2 restart ${{ secrets.FOLDER_NAME }} || pm2 start dist/main.js --name ${{ secrets.FOLDER_NAME }}
