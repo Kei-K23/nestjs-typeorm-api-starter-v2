@@ -1,7 +1,7 @@
 {
-  "name": "guancha-observability-platform",
+  "name": "nestjs-typeorm-api-starter-v2",
   "version": "0.0.2",
-  "description": "Guancha Observability Platform",
+  "description": "NestJS TypeORM API Starter V2",
   "author": "Kei-K23",
   "private": true,
   "license": "MIT",
