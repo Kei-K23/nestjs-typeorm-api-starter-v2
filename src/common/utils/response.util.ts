@@ -65,6 +65,7 @@ export class ResponseUtil {
     page: number,
     limit: number,
     message: string = 'Data retrieved successfully',
+    extraMeta: Record<string, any> = {},
   ): ApiResponse<T[]> {
     const totalPages = Math.ceil(total / limit);
 
@@ -73,6 +74,7 @@ export class ResponseUtil {
       page,
       limit,
       totalPages,
+      ...extraMeta,
     });
   }
 

@@ -9,6 +9,7 @@ import {
   PrimaryColumn,
   BeforeInsert,
   BeforeUpdate,
+  Relation,
 } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -27,7 +28,7 @@ export class RefreshToken {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user: Relation<User>;
 
   @Column({ nullable: true })
   adminId: string;
@@ -36,7 +37,7 @@ export class RefreshToken {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'adminId' })
-  admin: Admin;
+  admin: Relation<Admin>;
 
   @Column()
   expiresAt: Date;

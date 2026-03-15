@@ -35,10 +35,16 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
-  @RequirePermissions({
-    module: PermissionModule.USERS,
-    permission: 'create',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.APPLICATION_USER,
+      permission: 'create',
+    },
+    {
+      module: PermissionModule.APPLICATION_USER_LIST,
+      permission: 'create',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.CREATE,
     description: 'User created successfully',
@@ -64,6 +70,16 @@ export class UserController {
   }
 
   @Get()
+  @RequirePermissions([
+    {
+      module: PermissionModule.APPLICATION_USER,
+      permission: 'read',
+    },
+    {
+      module: PermissionModule.APPLICATION_USER_LIST,
+      permission: 'read',
+    },
+  ])
   async findAll(@Query() filters: FilterUserDto) {
     const result = await this.userService.findAll(filters);
 
@@ -84,6 +100,16 @@ export class UserController {
   }
 
   @Get('/:id')
+  @RequirePermissions([
+    {
+      module: PermissionModule.APPLICATION_USER,
+      permission: 'read',
+    },
+    {
+      module: PermissionModule.APPLICATION_USER_LIST,
+      permission: 'read',
+    },
+  ])
   async findOne(@Param('id') id: string) {
     const user = await this.userService.findOne(id);
     return ResponseUtil.success(
@@ -93,10 +119,16 @@ export class UserController {
   }
 
   @Patch('/:id')
-  @RequirePermissions({
-    module: PermissionModule.USERS,
-    permission: 'update',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.APPLICATION_USER,
+      permission: 'update',
+    },
+    {
+      module: PermissionModule.APPLICATION_USER_LIST,
+      permission: 'update',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.UPDATE,
     description: 'User updated successfully',
@@ -123,10 +155,16 @@ export class UserController {
   }
 
   @Delete('/:id')
-  @RequirePermissions({
-    module: PermissionModule.USERS,
-    permission: 'delete',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.APPLICATION_USER,
+      permission: 'delete',
+    },
+    {
+      module: PermissionModule.APPLICATION_USER_LIST,
+      permission: 'delete',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.DELETE,
     description: 'User deleted successfully',

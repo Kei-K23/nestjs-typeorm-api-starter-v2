@@ -13,6 +13,7 @@ export interface ResponseMeta {
   page?: number;
   limit?: number;
   totalPages?: number;
+  [key: string]: any;
 }
 
 export interface ErrorResponse {

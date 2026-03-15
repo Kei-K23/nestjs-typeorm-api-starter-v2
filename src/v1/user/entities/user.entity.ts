@@ -15,7 +15,6 @@ import {
 } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { CacheKey } from 'src/v1/auth/entities/cache-key.entity';
-import { Announcement } from 'src/v1/announcement/entities/announcement.entity';
 
 export const UserType = {
   Student: 'student',
@@ -25,6 +24,16 @@ export const UserType = {
 
 // This creates a union type of the *values*
 export type UserType = (typeof UserType)[keyof typeof UserType];
+
+export const UserRegistrationStage = {
+  OTP_VERIFY: 'otpVerify',
+  PASSWORD_SETUP: 'passwordSetup',
+  ACCOUNT_SETUP: 'accountSetup',
+} as const;
+
+// This creates a union type of the *values*
+export type UserRegistrationStage =
+  (typeof UserRegistrationStage)[keyof typeof UserRegistrationStage];
 
 @Entity('users')
 export class User {
@@ -36,10 +45,10 @@ export class User {
   email: string;
 
   @Index()
-  @Column()
+  @Column({ nullable: true })
   fullName: string;
 
-  @Column({ unique: true })
+  @Column()
   phone: string;
 
   @Column({ nullable: true })
@@ -47,7 +56,7 @@ export class User {
   password: string;
 
   @Index()
-  @Column({ default: false })
+  @Column({ default: false, nullable: true })
   isBanned: boolean;
 
   @Column({ nullable: true })
@@ -60,17 +69,27 @@ export class User {
   gender: string;
 
   @Index()
-  @Column()
+  @Column({ type: 'varchar', nullable: true })
   userType: UserType;
 
   @Column({ nullable: true })
   preferLanguage: string;
 
-  @Column()
+  @Column({ nullable: true })
   division: string;
 
-  @Column()
+  @Column({ nullable: true })
   city: string;
+
+  @Column({
+    type: 'varchar',
+    default: UserRegistrationStage.OTP_VERIFY,
+    nullable: true,
+  })
+  registrationStage: UserRegistrationStage;
+
+  @Column({ nullable: true, default: '' })
+  fcmToken: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -81,11 +100,11 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt: Date;
 
+  @Column({ type: 'timestamp', nullable: true })
+  lastLogoutAt: Date;
+
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshTokens: RefreshToken[];
-
-  @OneToMany(() => Announcement, (announcement) => announcement.toUser)
-  announcements: Announcement[];
 
   @OneToMany(() => CacheKey, (cacheKey) => cacheKey.user)
   cacheKeys: CacheKey[];

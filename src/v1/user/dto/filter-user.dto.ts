@@ -24,4 +24,12 @@ export class FilterUserDto extends PaginationFilterDto {
     message: 'User type must be student, teacher, or parent',
   })
   userType?: UserType;
+
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsString()
+  endDate?: string;
 }

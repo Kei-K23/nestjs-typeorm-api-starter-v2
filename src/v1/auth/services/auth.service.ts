@@ -4,16 +4,17 @@ import {
   BadRequestException,
   NotFoundException,
   Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
-import { User } from 'src/v1/user/entities/user.entity';
+import { User, UserRegistrationStage } from 'src/v1/user/entities/user.entity';
 import { Admin } from 'src/v1/admin/entities/admin.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
-import { JwtPayload } from '../interfaces/user.interface';
+import { AuthenticatedUser, JwtPayload } from '../interfaces/user.interface';
 import {
   ActivityAction,
   UserActivityLog,
@@ -36,6 +37,11 @@ import {
 } from '../entities/cache-key.entity';
 import { VerifyPasswordResetOTPCodeDto } from '../dto/verify-password-reset-otp-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
+import { UserRegisterOTPRequestDto } from '../dto/user-register-otp-request.dto';
+import { SMSPhoServiceUtils } from 'src/common/utils/sms-pho-service.utils';
+import { UserRegisterOTPVerifyDto } from '../dto/user-register-otp-verify.dto';
+import { UserRegisterPasswordSetupDto } from '../dto/user-register-password-setup.dto';
+import { UserRegisterAccountSetupDto } from '../dto/user-register-account-setup.dto';
 
 @Injectable()
 export class AuthService {
@@ -57,6 +63,7 @@ export class AuthService {
     private twoFactorService: TwoFactorService,
     private s3ClientUtils: S3ClientUtils,
     private emailServiceUtils: EmailServiceUtils,
+    private smsPhoServiceUtils: SMSPhoServiceUtils,
   ) {}
 
   async validateAdmin(email: string, plainPassword: string) {
@@ -99,35 +106,7 @@ export class AuthService {
     });
   }
 
-  async userLogin(loginDto: UserLoginDto, request: Request) {
-    const user = await this.userRepository.findOne({
-      where: { phone: loginDto.phone },
-    });
-
-    if (!user || !user.password) {
-      this.logger.warn(
-        `Invalid login attempt for phone '${loginDto.phone}' (user not found or no password)`,
-      );
-      throw new UnauthorizedException('Invalid phone or password');
-    }
-
-    const isPasswordValid = await bcrypt.compare(
-      loginDto.password,
-      user.password,
-    );
-
-    if (!isPasswordValid) {
-      this.logger.warn(
-        `Invalid login attempt for phone '${loginDto.phone}' (incorrect password)`,
-      );
-      throw new UnauthorizedException('Invalid phone or password');
-    }
-
-    if (user.isBanned) {
-      this.logger.warn(`Banned user with ID '${user.id}' attempted to login`);
-      throw new UnauthorizedException('Your account has been banned');
-    }
-
+  private async completeUserLogin(user: User, request: Request) {
     const payload: JwtPayload = {
       sub: user.id,
       subjectType: 'USER',
@@ -169,6 +148,302 @@ export class AuthService {
       user: {
         id: user.id,
       },
+    };
+  }
+
+  async userLogin(loginDto: UserLoginDto, request: Request) {
+    const user = await this.userRepository.findOne({
+      where: { phone: loginDto.phone },
+    });
+
+    if (!user || !user.password) {
+      this.logger.warn(
+        `Invalid login attempt for phone '${loginDto.phone}' (user not found or no password)`,
+      );
+      throw new UnauthorizedException('Invalid phone or password');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.password,
+    );
+
+    if (!isPasswordValid) {
+      this.logger.warn(
+        `Invalid login attempt for phone '${loginDto.phone}' (incorrect password)`,
+      );
+      throw new UnauthorizedException('Invalid phone or password');
+    }
+
+    if (user.isBanned) {
+      this.logger.warn(`Banned user with ID '${user.id}' attempted to login`);
+      throw new UnauthorizedException('Your account has been banned');
+    }
+
+    user.fcmToken = loginDto.fcmToken;
+    user.lastLoginAt = new Date();
+    await this.userRepository.save(user);
+
+    return this.completeUserLogin(user, request);
+  }
+
+  async userRegisterOTPRequest(
+    userRegisterOTPRequest: UserRegisterOTPRequestDto,
+  ) {
+    const isDevelopment =
+      this.configService.get('NODE_ENV') === 'development' ||
+      this.configService.get('TEST_USER_PHONE') ===
+        userRegisterOTPRequest.phone;
+
+    const user = await this.userRepository.findOne({
+      where: {
+        phone: userRegisterOTPRequest.phone,
+        registrationStage: UserRegistrationStage.ACCOUNT_SETUP,
+      },
+    });
+
+    if (user) {
+      this.logger.warn(
+        `User with phone '${userRegisterOTPRequest.phone}' already exists`,
+      );
+      throw new UnauthorizedException('User already exists');
+    }
+
+    if (isDevelopment) {
+      return {
+        requestId: '123456',
+        message: 'OTP verification code sent to your phone',
+      };
+    }
+
+    const { success, requestId } = await this.smsPhoServiceUtils.sendOTP({
+      to: userRegisterOTPRequest.phone,
+      message:
+        "[{brand}] Dear customer, your OTP code is {code} for register. It'll expire in 30 minutes.",
+      ttl: 1800,
+      pinLength: 6,
+    });
+
+    if (!success) {
+      throw new InternalServerErrorException('Failed to send OTP Verification');
+    }
+
+    return {
+      requestId,
+      message: 'OTP verification code sent to your phone',
+    };
+  }
+
+  async userRegisterOTPVerify(userRegisterOTPVerify: UserRegisterOTPVerifyDto) {
+    const isDevelopment =
+      this.configService.get('NODE_ENV') === 'development' ||
+      this.configService.get('TEST_USER_PHONE') === userRegisterOTPVerify.phone;
+
+    const user = await this.userRepository.findOne({
+      where: {
+        phone: userRegisterOTPVerify.phone,
+      },
+    });
+
+    if (user) {
+      if (user.registrationStage === UserRegistrationStage.OTP_VERIFY) {
+        return {
+          userId: user.id,
+          currentUserRegistrationStage: user.registrationStage,
+          nextUserRegistrationStage: UserRegistrationStage.PASSWORD_SETUP,
+          message: 'User is already OTP_VERIFY',
+        };
+      }
+
+      if (user.registrationStage === UserRegistrationStage.PASSWORD_SETUP) {
+        return {
+          userId: user.id,
+          currentUserRegistrationStage: user.registrationStage,
+          nextUserRegistrationStage: UserRegistrationStage.ACCOUNT_SETUP,
+          message: 'User is already PASSWORD_SETUP',
+        };
+      }
+
+      if (user.registrationStage === UserRegistrationStage.ACCOUNT_SETUP) {
+        // return {
+        //   userId: user.id,
+        //   currentUserRegistrationStage: user.registrationStage,
+        //   message:
+        //     'User is already ACCOUNT_SETUP and cannot be registered again',
+        // };
+        this.logger.warn(
+          `User with phone '${userRegisterOTPVerify.phone}' already exists`,
+        );
+        throw new UnauthorizedException(
+          'User is already ACCOUNT_SETUP and cannot be registered again',
+        );
+      }
+    }
+
+    if (isDevelopment) {
+      if (
+        userRegisterOTPVerify.otp === '123456' &&
+        userRegisterOTPVerify.requestId === '123456'
+      ) {
+        const newUser = this.userRepository.create({
+          fcmToken: userRegisterOTPVerify.fcmToken,
+          registrationStage: UserRegistrationStage.OTP_VERIFY,
+          phone: userRegisterOTPVerify.phone,
+        });
+        await this.userRepository.save(newUser);
+        return {
+          userId: newUser.id,
+          currentUserRegistrationStage: newUser.registrationStage,
+          nextUserRegistrationStage: UserRegistrationStage.PASSWORD_SETUP,
+          message: 'OTP verification succeeded',
+        };
+      }
+    }
+
+    const { success } = await this.smsPhoServiceUtils.verifyOTP({
+      requestId: userRegisterOTPVerify.requestId,
+      code: userRegisterOTPVerify.otp,
+    });
+
+    if (success) {
+      const newUser = this.userRepository.create({
+        fcmToken: userRegisterOTPVerify.fcmToken,
+        registrationStage: UserRegistrationStage.OTP_VERIFY,
+        phone: userRegisterOTPVerify.phone,
+      });
+      await this.userRepository.save(newUser);
+      return {
+        userId: newUser.id,
+        currentUserRegistrationStage: newUser.registrationStage,
+        nextUserRegistrationStage: UserRegistrationStage.PASSWORD_SETUP,
+        message: 'OTP verification succeeded',
+      };
+    }
+
+    throw new BadRequestException('Invalid OTP');
+  }
+
+  async userRegisterPasswordSetup(
+    userRegisterPasswordSetupDto: UserRegisterPasswordSetupDto,
+  ) {
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userRegisterPasswordSetupDto.userId,
+        registrationStage: UserRegistrationStage.OTP_VERIFY,
+      },
+    });
+
+    if (!user) {
+      this.logger.warn(
+        `User with ID '${userRegisterPasswordSetupDto.userId}' not found`,
+      );
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (user.registrationStage !== UserRegistrationStage.OTP_VERIFY) {
+      this.logger.warn(
+        `User with ID '${userRegisterPasswordSetupDto.userId}' is not in OTP_VERIFY stage`,
+      );
+      throw new UnauthorizedException('User not in OTP_VERIFY stage');
+    }
+
+    if (
+      userRegisterPasswordSetupDto.password !==
+      userRegisterPasswordSetupDto.confirmPassword
+    ) {
+      this.logger.warn(
+        `Passwords do not match for user with ID '${userRegisterPasswordSetupDto.userId}'`,
+      );
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    user.password = userRegisterPasswordSetupDto.password;
+    user.registrationStage = UserRegistrationStage.PASSWORD_SETUP;
+    await this.userRepository.save(user);
+
+    return {
+      userId: user.id,
+      currentUserRegistrationStage: user.registrationStage,
+      nextUserRegistrationStage: UserRegistrationStage.ACCOUNT_SETUP,
+      message: 'Password setup succeeded',
+    };
+  }
+
+  async userRegisterAccountSetup(
+    userRegisterAccountSetupDto: UserRegisterAccountSetupDto,
+    file?: Express.Multer.File,
+    request?: Request,
+  ) {
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userRegisterAccountSetupDto.userId,
+        registrationStage: UserRegistrationStage.PASSWORD_SETUP,
+      },
+    });
+
+    if (!user) {
+      this.logger.warn(
+        `User with ID '${userRegisterAccountSetupDto.userId}' not found`,
+      );
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (user.registrationStage !== UserRegistrationStage.PASSWORD_SETUP) {
+      this.logger.warn(
+        `User with ID '${userRegisterAccountSetupDto.userId}' is not in PASSWORD_SETUP stage`,
+      );
+      throw new UnauthorizedException('User not in PASSWORD_SETUP stage');
+    }
+
+    const existingProfileImageUrl = user.profileImageUrl || '';
+
+    let newProfileImageUrl =
+      userRegisterAccountSetupDto.profileImageUrl ?? existingProfileImageUrl;
+
+    if (file) {
+      const original = file.originalname?.trim() || 'profile';
+      const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const key = `${crypto.randomUUID()}-${sanitized}`;
+      const res = await this.s3ClientUtils.uploadFile({
+        key,
+        body: file.buffer,
+        contentType: file.mimetype,
+        path: 'users/profile',
+        metadata: { filename: original },
+      });
+      if (res.success && res.key) {
+        newProfileImageUrl = res.key;
+      }
+    }
+
+    user.email = userRegisterAccountSetupDto.email ?? user.email;
+    user.fullName = userRegisterAccountSetupDto.fullName;
+    user.dateOfBirth = userRegisterAccountSetupDto.dateOfBirth;
+    user.gender = userRegisterAccountSetupDto.gender ?? user.gender;
+    user.userType = userRegisterAccountSetupDto.userType;
+    user.preferLanguage =
+      userRegisterAccountSetupDto.preferLanguage ?? user.preferLanguage;
+    user.division = userRegisterAccountSetupDto.division;
+    user.city = userRegisterAccountSetupDto.city;
+    user.profileImageUrl = newProfileImageUrl;
+    user.registrationStage = UserRegistrationStage.ACCOUNT_SETUP;
+    user.fcmToken = userRegisterAccountSetupDto.fcmToken ?? user.fcmToken;
+
+    await this.userRepository.save(user);
+
+    const imageChanged = newProfileImageUrl !== (existingProfileImageUrl || '');
+
+    if (imageChanged && existingProfileImageUrl) {
+      await this.s3ClientUtils.deleteObject(existingProfileImageUrl);
+    }
+
+    const loginData = await this.completeUserLogin(user, request as Request);
+
+    return {
+      userId: user.id,
+      currentUserRegistrationStage: user.registrationStage,
+      loginData,
+      message: 'Account setup succeeded',
     };
   }
 
@@ -371,7 +646,7 @@ export class AuthService {
     };
   }
 
-  async logout(refreshTokenString: string) {
+  async logout(refreshTokenString: string, user: AuthenticatedUser) {
     const refreshToken = await this.refreshTokenRepository.findOne({
       where: { token: refreshTokenString },
     });
@@ -380,6 +655,11 @@ export class AuthService {
       refreshToken.isRevoked = true;
       await this.refreshTokenRepository.save(refreshToken);
     }
+
+    if (user) {
+      await this.revokeAllUserTokens(user.id);
+      this.logger.log(`User with ID '${user.id}' logged out successfully`);
+    }
   }
 
   async revokeAllUserTokens(userId: string) {
@@ -387,6 +667,11 @@ export class AuthService {
       { userId, isRevoked: false },
       { isRevoked: true },
     );
+
+    await this.userRepository.update(userId, {
+      lastLogoutAt: new Date().toISOString(),
+      fcmToken: '',
+    });
   }
 
   async revokeAllAdminTokens(adminId: string) {
@@ -451,6 +736,7 @@ export class AuthService {
     subjectType: 'ADMIN' | 'USER' | undefined,
     updateProfileDto: UpdateProfileDto,
     request: Request,
+    file?: Express.Multer.File,
   ) {
     if (subjectType === 'ADMIN') {
       const admin = await this.adminRepository.findOne({
@@ -462,16 +748,28 @@ export class AuthService {
         throw new NotFoundException(`Admin with ID '${userId}' not found`);
       }
 
-      if (
-        updateProfileDto.profileImageUrl &&
-        updateProfileDto.profileImageUrl !== admin.profileImageUrl
-      ) {
-        if (
-          admin.profileImageUrl &&
-          (await this.s3ClientUtils.objectExists(admin.profileImageUrl))
-        ) {
-          await this.s3ClientUtils.deleteObject(admin.profileImageUrl);
+      const hasBodyProfileImageUrl =
+        typeof updateProfileDto.profileImageUrl === 'string' &&
+        updateProfileDto.profileImageUrl.length >= 0;
+
+      let newProfileImageUrl = admin.profileImageUrl || '';
+
+      if (file) {
+        const original = file.originalname?.trim() || 'profile';
+        const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        const key = `${crypto.randomUUID()}-${sanitized}`;
+        const res = await this.s3ClientUtils.uploadFile({
+          key,
+          body: file.buffer,
+          contentType: file.mimetype,
+          path: 'admins/profile',
+          metadata: { filename: original },
+        });
+        if (res.success && res.key) {
+          newProfileImageUrl = res.key;
         }
+      } else if (hasBodyProfileImageUrl) {
+        newProfileImageUrl = updateProfileDto.profileImageUrl || '';
       }
 
       const updatedAdmin = this.adminRepository.merge(admin, {
@@ -495,10 +793,7 @@ export class AuthService {
           updateProfileDto.gender !== undefined
             ? updateProfileDto.gender
             : admin.gender,
-        profileImageUrl:
-          updateProfileDto.profileImageUrl !== undefined
-            ? updateProfileDto.profileImageUrl
-            : admin.profileImageUrl,
+        profileImageUrl: newProfileImageUrl,
       });
 
       if (updateProfileDto.password) {
@@ -506,6 +801,16 @@ export class AuthService {
       }
 
       const savedAdmin = await this.adminRepository.save(updatedAdmin);
+
+      const imageChanged = newProfileImageUrl !== (admin.profileImageUrl || '');
+
+      if (
+        imageChanged &&
+        admin.profileImageUrl &&
+        (await this.s3ClientUtils.objectExists(admin.profileImageUrl))
+      ) {
+        await this.s3ClientUtils.deleteObject(admin.profileImageUrl);
+      }
 
       const { device, browser, os } = parseUserAgent(request);
       const userActivityLog = this.userActivityLogRepository.create({
@@ -539,21 +844,34 @@ export class AuthService {
       throw new NotFoundException(`User with ID '${userId}' not found`);
     }
 
-    if (
-      updateProfileDto.profileImageUrl &&
-      updateProfileDto.profileImageUrl !== user.profileImageUrl
-    ) {
-      if (
-        user.profileImageUrl &&
-        (await this.s3ClientUtils.objectExists(user.profileImageUrl))
-      ) {
-        await this.s3ClientUtils.deleteObject(user.profileImageUrl);
+    const hasBodyProfileImageUrl =
+      typeof updateProfileDto.profileImageUrl === 'string' &&
+      updateProfileDto.profileImageUrl.length >= 0;
+
+    let newProfileImageUrl = user.profileImageUrl || '';
+
+    if (file) {
+      const original = file.originalname?.trim() || 'profile';
+      const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const key = `${crypto.randomUUID()}-${sanitized}`;
+      const res = await this.s3ClientUtils.uploadFile({
+        key,
+        body: file.buffer,
+        contentType: file.mimetype,
+        path: 'users/profile',
+        metadata: { filename: original },
+      });
+      if (res.success && res.key) {
+        newProfileImageUrl = res.key;
       }
+    } else if (hasBodyProfileImageUrl) {
+      newProfileImageUrl = updateProfileDto.profileImageUrl || '';
     }
 
     const updatedUser = await this.userRepository.preload({
       id: userId,
       ...updateProfileDto,
+      profileImageUrl: newProfileImageUrl,
     });
     if (!updatedUser) {
       this.logger.warn(`User with ID '${userId}' not found`);
@@ -565,6 +883,16 @@ export class AuthService {
     }
 
     const savedUser = await this.userRepository.save(updatedUser);
+
+    const imageChanged = newProfileImageUrl !== (user.profileImageUrl || '');
+
+    if (
+      imageChanged &&
+      user.profileImageUrl &&
+      (await this.s3ClientUtils.objectExists(user.profileImageUrl))
+    ) {
+      await this.s3ClientUtils.deleteObject(user.profileImageUrl);
+    }
 
     const { device, browser, os } = parseUserAgent(request);
     const userActivityLog = this.userActivityLogRepository.create({
@@ -687,7 +1015,7 @@ export class AuthService {
   async deleteProfile(userId: string, request: Request): Promise<void> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['refreshTokens', 'twoFactorAuth'],
+      relations: ['refreshTokens'],
     });
 
     if (!user) {

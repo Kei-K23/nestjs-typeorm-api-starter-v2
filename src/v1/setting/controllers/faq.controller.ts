@@ -26,15 +26,21 @@ import { Faq } from '../entities/faq.entity';
 
 @Controller('api/v1/settings/faqs')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class FaqController {
   constructor(private readonly faqService: FaqService) {}
 
   @Post()
-  @RequirePermissions({
-    module: PermissionModule.SETTINGS,
-    permission: 'create',
-  })
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions([
+    {
+      module: PermissionModule.SETTING,
+      permission: 'create',
+    },
+    {
+      module: PermissionModule.SETTING_FAQ,
+      permission: 'create',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.CREATE,
     description: 'FAQ created successfully',
@@ -47,10 +53,17 @@ export class FaqController {
   }
 
   @Get()
-  @RequirePermissions({
-    module: PermissionModule.SETTINGS,
-    permission: 'read',
-  })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions([
+    {
+      module: PermissionModule.SETTING,
+      permission: 'read',
+    },
+    {
+      module: PermissionModule.SETTING_FAQ,
+      permission: 'read',
+    },
+  ])
   async findAll(@Query() filters: FilterFaqDto) {
     const result = await this.faqService.findAll(filters);
 
@@ -70,11 +83,38 @@ export class FaqController {
     );
   }
 
+  @Get('mobile')
+  async findAllForMobile(@Query() filters: FilterFaqDto) {
+    const result = await this.faqService.findAllForMobile(filters);
+
+    if (filters.getAll) {
+      return ResponseUtil.success(
+        result.data,
+        'All FAQs retrieved successfully',
+      );
+    }
+
+    return ResponseUtil.paginated(
+      result.data,
+      result.total,
+      result.page,
+      result.limit,
+      'FAQs retrieved successfully',
+    );
+  }
+
   @Patch(':id')
-  @RequirePermissions({
-    module: PermissionModule.SETTINGS,
-    permission: 'update',
-  })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions([
+    {
+      module: PermissionModule.SETTING,
+      permission: 'update',
+    },
+    {
+      module: PermissionModule.SETTING_FAQ,
+      permission: 'update',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.UPDATE,
     description: 'FAQ updated successfully',
@@ -87,10 +127,17 @@ export class FaqController {
   }
 
   @Delete(':id')
-  @RequirePermissions({
-    module: PermissionModule.SETTINGS,
-    permission: 'delete',
-  })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions([
+    {
+      module: PermissionModule.SETTING,
+      permission: 'delete',
+    },
+    {
+      module: PermissionModule.SETTING_FAQ,
+      permission: 'delete',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.DELETE,
     description: 'FAQ deleted successfully',

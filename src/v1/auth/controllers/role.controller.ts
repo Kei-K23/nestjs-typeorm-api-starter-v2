@@ -30,10 +30,16 @@ export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
   @Get()
-  @RequirePermissions({
-    module: PermissionModule.ROLES,
-    permission: 'read',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'read',
+    },
+    {
+      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
+      permission: 'read',
+    },
+  ])
   async findAll(
     @Query() filterDto: FilterRoleDto,
   ): Promise<ApiResponse<Role[]>> {
@@ -41,6 +47,7 @@ export class RoleController {
       filterDto.page,
       filterDto.limit,
       filterDto.getAll,
+      filterDto.search,
     );
 
     if (filterDto.getAll) {
@@ -57,10 +64,16 @@ export class RoleController {
   }
 
   @Get('permissions')
-  @RequirePermissions({
-    module: PermissionModule.ROLES,
-    permission: 'read',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'read',
+    },
+    {
+      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
+      permission: 'read',
+    },
+  ])
   async findAllPermissions() {
     const permissions = await this.roleService.findAllPermissions();
 
@@ -71,10 +84,16 @@ export class RoleController {
   }
 
   @Get(':id')
-  @RequirePermissions({
-    module: PermissionModule.ROLES,
-    permission: 'read',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'read',
+    },
+    {
+      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
+      permission: 'read',
+    },
+  ])
   async findOne(@Param('id') id: string): Promise<ApiResponse<Role>> {
     const role = await this.roleService.findOne(id);
 
@@ -86,10 +105,16 @@ export class RoleController {
   }
 
   @Post()
-  @RequirePermissions({
-    module: PermissionModule.ROLES,
-    permission: 'create',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'create',
+    },
+    {
+      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
+      permission: 'create',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.CREATE,
     description: 'Role created successfully',
@@ -108,10 +133,16 @@ export class RoleController {
   }
 
   @Patch(':id')
-  @RequirePermissions({
-    module: PermissionModule.ROLES,
-    permission: 'update',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'update',
+    },
+    {
+      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
+      permission: 'update',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.UPDATE,
     description: 'Role updated successfully',
@@ -132,10 +163,16 @@ export class RoleController {
   }
 
   @Delete(':id')
-  @RequirePermissions({
-    module: PermissionModule.ROLES,
-    permission: 'delete',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'delete',
+    },
+    {
+      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
+      permission: 'delete',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.DELETE,
     description: 'Role deleted successfully',

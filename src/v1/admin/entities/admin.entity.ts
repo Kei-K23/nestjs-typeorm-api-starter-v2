@@ -12,6 +12,7 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Relation,
 } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcryptjs';
@@ -53,7 +54,7 @@ export class Admin {
 
   @ManyToOne(() => Role, undefined, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'roleId' })
-  role: Role;
+  role: Relation<Role>;
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.admin)
   refreshTokens: RefreshToken[];

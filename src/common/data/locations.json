@@ -1,0 +1,714 @@
+[
+  {
+    "id": 1,
+    "name": "Myanmar",
+    "states": [
+      {
+        "id": 1,
+        "name": "Kachin",
+        "townships": [
+          {
+            "id": 1,
+            "name": "Bhamo"
+          },
+          {
+            "id": 2,
+            "name": "Mohnyin"
+          },
+          {
+            "id": 3,
+            "name": "Myitkyina"
+          },
+          {
+            "id": 4,
+            "name": "Putao"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Kayah",
+        "townships": [
+          {
+            "id": 5,
+            "name": "Bawlakhe"
+          },
+          {
+            "id": 6,
+            "name": "Loikaw"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Kayin",
+        "townships": [
+          {
+            "id": 7,
+            "name": "Hpa-an"
+          },
+          {
+            "id": 8,
+            "name": "Hpapun"
+          },
+          {
+            "id": 9,
+            "name": "Kawkareik"
+          },
+          {
+            "id": 10,
+            "name": "Myawaddy"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Chin",
+        "townships": [
+          {
+            "id": 11,
+            "name": "Falam"
+          },
+          {
+            "id": 12,
+            "name": "Hakha"
+          },
+          {
+            "id": 13,
+            "name": "Matupi"
+          },
+          {
+            "id": 14,
+            "name": "Mindat"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Mon",
+        "townships": [
+          {
+            "id": 15,
+            "name": "Mawlamyine"
+          },
+          {
+            "id": 16,
+            "name": "Thaton"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "name": "Rakhine",
+        "townships": [
+          {
+            "id": 17,
+            "name": "Kyaukpyu"
+          },
+          {
+            "id": 18,
+            "name": "Maungdaw"
+          },
+          {
+            "id": 19,
+            "name": "Sittwe"
+          },
+          {
+            "id": 20,
+            "name": "Thandwe"
+          },
+          {
+            "id": 21,
+            "name": "Mrauk-U"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "name": "East Shan",
+        "townships": [
+          {
+            "id": 22,
+            "name": "Kengtung"
+          },
+          {
+            "id": 23,
+            "name": "Mong Hpayak"
+          },
+          {
+            "id": 24,
+            "name": "Mong Hsat"
+          },
+          {
+            "id": 25,
+            "name": "Tachileik"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "name": "North Shan",
+        "townships": [
+          {
+            "id": 26,
+            "name": "Kunlong"
+          },
+          {
+            "id": 27,
+            "name": "Kyaukme"
+          },
+          {
+            "id": 28,
+            "name": "Lashio"
+          },
+          {
+            "id": 29,
+            "name": "Laukkaing"
+          },
+          {
+            "id": 30,
+            "name": "Mu Se"
+          },
+          {
+            "id": 31,
+            "name": "Hopang"
+          },
+          {
+            "id": 32,
+            "name": "Matman"
+          },
+          {
+            "id": 33,
+            "name": "Mongmit"
+          },
+          {
+            "id": 34,
+            "name": "Kokang Self-Administered Zone"
+          },
+          {
+            "id": 35,
+            "name": "Pa Laung Self-Administered Zone1"
+          },
+          {
+            "id": 36,
+            "name": "Wa Self-Administered Division"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "name": "South Shan",
+        "townships": [
+          {
+            "id": 37,
+            "name": "Langkho"
+          },
+          {
+            "id": 38,
+            "name": "Loilen"
+          },
+          {
+            "id": 39,
+            "name": "Taunggyi"
+          },
+          {
+            "id": 40,
+            "name": "Danu Self-Administered Zone"
+          },
+          {
+            "id": 41,
+            "name": "Pa-O Self-Administered Zone"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "name": "Sagaing",
+        "townships": [
+          {
+            "id": 42,
+            "name": "Hkamti"
+          },
+          {
+            "id": 43,
+            "name": "Kanbalu"
+          },
+          {
+            "id": 44,
+            "name": "Kale"
+          },
+          {
+            "id": 45,
+            "name": "Katha"
+          },
+          {
+            "id": 46,
+            "name": "Mawlaik"
+          },
+          {
+            "id": 47,
+            "name": "Monywa"
+          },
+          {
+            "id": 48,
+            "name": "Sagaing"
+          },
+          {
+            "id": 49,
+            "name": "Shwebo"
+          },
+          {
+            "id": 50,
+            "name": "Tamu"
+          },
+          {
+            "id": 51,
+            "name": "Yinmabin"
+          },
+          {
+            "id": 52,
+            "name": "Naga Self-Administered Zone"
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "name": "Mandalay",
+        "townships": [
+          {
+            "id": 55,
+            "name": "Kyaukse"
+          },
+          {
+            "id": 56,
+            "name": "Mandalay"
+          },
+          {
+            "id": 57,
+            "name": "Meiktila"
+          },
+          {
+            "id": 58,
+            "name": "Myingyan"
+          },
+          {
+            "id": 59,
+            "name": "Nyaung-U"
+          },
+          {
+            "id": 60,
+            "name": "Pyinoolwin"
+          },
+          {
+            "id": 61,
+            "name": "Yamethin"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "name": "East Bago",
+        "townships": [
+          {
+            "id": 62,
+            "name": "Bago"
+          },
+          {
+            "id": 63,
+            "name": "Taungoo"
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "name": "West Bago",
+        "townships": [
+          {
+            "id": 64,
+            "name": "Pyay"
+          },
+          {
+            "id": 65,
+            "name": "Tharrawaddy"
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Magway",
+        "townships": [
+          {
+            "id": 66,
+            "name": "Pakokku"
+          },
+          {
+            "id": 67,
+            "name": "Magway"
+          },
+          {
+            "id": 68,
+            "name": "Chauk"
+          },
+          {
+            "id": 69,
+            "name": "Yenangyaung"
+          },
+          {
+            "id": 70,
+            "name": "Taungdwingyi"
+          },
+          {
+            "id": 71,
+            "name": "Minbu"
+          },
+          {
+            "id": 72,
+            "name": "Yesagyo"
+          },
+          {
+            "id": 73,
+            "name": "Salin"
+          },
+          {
+            "id": 74,
+            "name": "Thayet"
+          },
+          {
+            "id": 75,
+            "name": "Natmauk"
+          },
+          {
+            "id": 76,
+            "name": "Minhla"
+          },
+          {
+            "id": 77,
+            "name": "Gangaw"
+          },
+          {
+            "id": 78,
+            "name": "Saw"
+          },
+          {
+            "id": 79,
+            "name": "Seikphyu"
+          },
+          {
+            "id": 80,
+            "name": "Myothit"
+          },
+          {
+            "id": 81,
+            "name": "Myaing"
+          },
+          {
+            "id": 82,
+            "name": "Pauk"
+          },
+          {
+            "id": 83,
+            "name": "Pwintbyu"
+          },
+          {
+            "id": 84,
+            "name": "Mindon"
+          },
+          {
+            "id": 85,
+            "name": "Kamma"
+          },
+          {
+            "id": 86,
+            "name": "Sinbaungwe"
+          },
+          {
+            "id": 87,
+            "name": "Sidoktaya"
+          },
+          {
+            "id": 88,
+            "name": "Htilin"
+          },
+          {
+            "id": 89,
+            "name": "Ngape"
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "name": "East Yangon",
+        "townships": [
+          {
+            "id": 90,
+            "name": "Botataung"
+          },
+          {
+            "id": 91,
+            "name": "Dagon Seikkan"
+          },
+          {
+            "id": 92,
+            "name": "East Dagon"
+          },
+          {
+            "id": 93,
+            "name": "North Dagon"
+          },
+          {
+            "id": 94,
+            "name": "North Okkalapa"
+          },
+          {
+            "id": 95,
+            "name": "Pazundaung"
+          },
+          {
+            "id": 96,
+            "name": "South Dagon"
+          },
+          {
+            "id": 97,
+            "name": "South Okkalapa"
+          },
+          {
+            "id": 98,
+            "name": "Thingangyun"
+          },
+          {
+            "id": 99,
+            "name": "Dawbon"
+          },
+          {
+            "id": 100,
+            "name": "Mingala Taungnyunt"
+          },
+          {
+            "id": 101,
+            "name": "Tamwe"
+          },
+          {
+            "id": 102,
+            "name": "Thaketa"
+          },
+          {
+            "id": 103,
+            "name": "Yankin"
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "name": "North Yangon",
+        "townships": [
+          {
+            "id": 104,
+            "name": "Hlaingthaya"
+          },
+          {
+            "id": 105,
+            "name": "Insein"
+          },
+          {
+            "id": 106,
+            "name": "Mingaladon"
+          },
+          {
+            "id": 107,
+            "name": "Shwepyitha"
+          },
+          {
+            "id": 108,
+            "name": "Hlegu"
+          },
+          {
+            "id": 109,
+            "name": "Hmawbi"
+          },
+          {
+            "id": 110,
+            "name": "Htantabin"
+          },
+          {
+            "id": 111,
+            "name": "Taikkyi"
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "name": "South Yangon",
+        "townships": [
+          {
+            "id": 112,
+            "name": "Dala"
+          },
+          {
+            "id": 113,
+            "name": "Seikkyi Kanaungto"
+          },
+          {
+            "id": 114,
+            "name": "Cocokyun"
+          },
+          {
+            "id": 115,
+            "name": "Kawhmu"
+          },
+          {
+            "id": 116,
+            "name": "Kayan"
+          },
+          {
+            "id": 117,
+            "name": "Kungyangon"
+          },
+          {
+            "id": 118,
+            "name": "Kyauktan"
+          },
+          {
+            "id": 119,
+            "name": "Thanlyin"
+          },
+          {
+            "id": 120,
+            "name": "Thongwa"
+          },
+          {
+            "id": 121,
+            "name": "Twante"
+          },
+          {
+            "id": 122,
+            "name": "Tada"
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "name": "West Yangon",
+        "townships": [
+          {
+            "id": 123,
+            "name": "Ahlon"
+          },
+          {
+            "id": 124,
+            "name": "Bahan"
+          },
+          {
+            "id": 125,
+            "name": "Dagon"
+          },
+          {
+            "id": 126,
+            "name": "Kyauktada"
+          },
+          {
+            "id": 127,
+            "name": "Kyimyindaing"
+          },
+          {
+            "id": 128,
+            "name": "Lanmadaw"
+          },
+          {
+            "id": 129,
+            "name": "Latha"
+          },
+          {
+            "id": 130,
+            "name": "Pabedan"
+          },
+          {
+            "id": 131,
+            "name": "Sanchaung"
+          },
+          {
+            "id": 132,
+            "name": "Seikkan"
+          },
+          {
+            "id": 133,
+            "name": "Hlaing"
+          },
+          {
+            "id": 134,
+            "name": "Kamayut"
+          },
+          {
+            "id": 135,
+            "name": "Mayangon"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "name": "Tanin Thar Yi",
+        "townships": [
+          {
+            "id": 136,
+            "name": "Dawei"
+          },
+          {
+            "id": 137,
+            "name": "Kawthaung"
+          },
+          {
+            "id": 138,
+            "name": "Myeik"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "name": "Ayeyarwady",
+        "townships": [
+          {
+            "id": 139,
+            "name": "Hinthada"
+          },
+          {
+            "id": 140,
+            "name": "Labutta"
+          },
+          {
+            "id": 141,
+            "name": "Ma-ubin"
+          },
+          {
+            "id": 142,
+            "name": "Myaungmya"
+          },
+          {
+            "id": 143,
+            "name": "Pathein"
+          },
+          {
+            "id": 144,
+            "name": "Pyapon"
+          },
+          {
+            "id": 145,
+            "name": "Kyonpyaw"
+          },
+          {
+            "id": 146,
+            "name": "Myanaung"
+          }
+        ]
+      },
+      {
+        "id": 21,
+        "name": "Naypyitaw",
+        "townships": [
+          {
+            "id": 147,
+            "name": "Naypyitaw"
+          }
+        ]
+      }
+    ]
+  }
+]

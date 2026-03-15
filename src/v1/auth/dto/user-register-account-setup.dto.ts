@@ -1,15 +1,15 @@
-import { Transform } from 'class-transformer';
 import {
-  IsString,
-  IsNotEmpty,
-  MinLength,
-  MaxLength,
-  IsOptional,
   IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
 } from 'class-validator';
-import { UserType } from '../entities/user.entity';
+import { UserType } from 'src/v1/user/entities/user.entity';
 
-export class CreateUserDto {
+export class UserRegisterAccountSetupDto {
   @IsOptional()
   @IsString()
   email?: string;
@@ -20,26 +20,21 @@ export class CreateUserDto {
   @MaxLength(100, { message: 'Full name must not exceed 100 characters' })
   fullName: string;
 
-  @IsString({ message: 'Password must be a string' })
-  @IsNotEmpty({ message: 'Password is required' })
-  @MinLength(8, { message: 'Password must be at least 8 characters long' })
-  password: string;
+  @IsString({ message: 'User ID must be a string' })
+  @IsUUID('4', { message: 'User ID must be a valid UUID v4' })
+  @IsNotEmpty({ message: 'User ID is required' })
+  userId: string;
 
-  @IsString({ message: 'Phone must be a string' })
-  @IsNotEmpty({ message: 'Phone is required' })
-  phone: string;
-
-  @IsOptional()
   @IsString({ message: 'Date of birth must be a string' })
-  dateOfBirth?: string;
+  dateOfBirth: string;
 
   @IsOptional()
   @IsString({ message: 'Gender must be a string' })
   @IsIn(['male', 'female'], { message: 'Gender must be either male or female' })
   gender?: string;
 
-  @IsString({ message: 'User type must be a string' })
   @IsOptional()
+  @IsString({ message: 'User type must be a string' })
   userType: UserType;
 
   @IsOptional()
@@ -58,15 +53,10 @@ export class CreateUserDto {
   city: string;
 
   @IsOptional()
-  @Transform(({ value }) => {
-    if (value === undefined || value === null) return undefined;
-    if (value === 'true' || value === '1' || value === true) return true;
-    if (value === 'false' || value === '0' || value === false) return false;
-    return undefined;
-  })
-  isBanned?: boolean;
-
-  @IsOptional()
   @IsString({ message: 'Profile image URL must be a string' })
   profileImageUrl?: string;
+
+  @IsOptional()
+  @IsString({ message: 'FCM token must be a string' })
+  fcmToken?: string;
 }

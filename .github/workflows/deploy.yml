@@ -1,4 +1,4 @@
-# name: Deploy NestJS TypeORM API Starter V2 App to VPS
+# name: Deploy Pann Thee DEV App to aaPanel D5
 
 # on:
 #   push:
@@ -77,10 +77,10 @@
 #             chmod +x node_modules/.bin/*
 
 #             # Build application
-#             npm run build
+#             npm run build:low-mem
 
 #             # Stop the pm2 process
 #             pm2 stop ${{ secrets.FOLDER_NAME }} || echo "No existing process found"
 
 #             # Restart the pm2 process
-#             pm2 restart ${{ secrets.FOLDER_NAME }} || pm2 start dist/main.js --name ${{ secrets.FOLDER_NAME }}
+#             pm2 restart ${{ secrets.FOLDER_NAME }} || pm2 start dist/main.js --name ${{ secrets.FOLDER_NAME }} || pm2 start dist/src/main.js --name ${{ secrets.FOLDER_NAME }}

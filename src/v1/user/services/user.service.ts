@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
-import { User } from '../entities/user.entity';
+import { User, UserType } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { FilterUserDto } from '../dto/filter-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -54,6 +54,7 @@ export class UserService {
 
     const user = this.userRepository.create({
       ...createUserDto,
+      userType: createUserDto.userType || UserType.Student,
       profileImageUrl,
     });
     const savedUser = await this.userRepository.save(user);
@@ -86,6 +87,18 @@ export class UserService {
 
     if (filter.userType) {
       qb.andWhere('user.userType = :userType', { userType: filter.userType });
+    }
+
+    if (filter.startDate) {
+      qb.andWhere('user.createdAt >= :startDate', {
+        startDate: new Date(filter.startDate),
+      });
+    }
+
+    if (filter.endDate) {
+      qb.andWhere('user.createdAt <= :endDate', {
+        endDate: new Date(filter.endDate),
+      });
     }
 
     const [data, total] = await qb.getManyAndCount();

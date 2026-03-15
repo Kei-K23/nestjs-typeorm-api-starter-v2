@@ -7,23 +7,32 @@ import { RequirePermissions } from 'src/v1/auth/decorators/permissions.decorator
 import { PermissionModule } from 'src/v1/auth/entities/permission.entity';
 import { ResponseUtil } from 'src/common/utils/response.util';
 
-@Controller('/api/v1/activity-logs')
+@Controller('/api/v1/')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ActivityLogController {
   constructor(private readonly activityLogService: ActivityLogService) {}
 
-  @Get()
-  @RequirePermissions({
-    module: PermissionModule.ACTIVITY_LOGS,
-    permission: 'read',
-  })
-  async findAll(@Query() filterDto: FilterActivityLogDto) {
-    const result = await this.activityLogService.findAll(filterDto);
+  @Get('user-logs')
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'read',
+    },
+    {
+      module: PermissionModule.ADMIN_USER_LOGS,
+      permission: 'read',
+    },
+  ])
+  async findAllUserLogs(@Query() filterDto: FilterActivityLogDto) {
+    const result = await this.activityLogService.findAll({
+      ...filterDto,
+      isActivityLog: true,
+    });
 
     if (filterDto.getAll) {
       return ResponseUtil.success(
         result.data,
-        'All activity logs retrieved successfully',
+        'All user logs retrieved successfully',
       );
     }
 
@@ -32,7 +41,40 @@ export class ActivityLogController {
       result.total,
       filterDto.page || 1,
       filterDto.limit || 10,
-      'Activity logs retrieved successfully',
+      'User logs retrieved successfully',
+    );
+  }
+
+  @Get('audit-logs')
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'read',
+    },
+    {
+      module: PermissionModule.ADMIN_AUDIT_LOGS,
+      permission: 'read',
+    },
+  ])
+  async findAllAuditLogs(@Query() filterDto: FilterActivityLogDto) {
+    const result = await this.activityLogService.findAll({
+      ...filterDto,
+      isActivityLog: false,
+    });
+
+    if (filterDto.getAll) {
+      return ResponseUtil.success(
+        result.data,
+        'All audit logs retrieved successfully',
+      );
+    }
+
+    return ResponseUtil.paginated(
+      result.data,
+      result.total,
+      filterDto.page || 1,
+      filterDto.limit || 10,
+      'Audit logs retrieved successfully',
     );
   }
 }

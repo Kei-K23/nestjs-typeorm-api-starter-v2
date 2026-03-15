@@ -34,10 +34,16 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post()
-  @RequirePermissions({
-    module: PermissionModule.USERS,
-    permission: 'create',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'create',
+    },
+    {
+      module: PermissionModule.ADMIN_LIST,
+      permission: 'create',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.CREATE,
     description: 'Admin created successfully',
@@ -62,6 +68,16 @@ export class AdminController {
   }
 
   @Get()
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'read',
+    },
+    {
+      module: PermissionModule.ADMIN_LIST,
+      permission: 'read',
+    },
+  ])
   async findAll(@Query() filters: FilterAdminDto) {
     const result = await this.adminService.findAll(filters);
 
@@ -82,6 +98,16 @@ export class AdminController {
   }
 
   @Get('/:id')
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'read',
+    },
+    {
+      module: PermissionModule.ADMIN_LIST,
+      permission: 'read',
+    },
+  ])
   async findOne(@Param('id') id: string) {
     const admin = await this.adminService.findOne(id);
     return ResponseUtil.success(
@@ -91,10 +117,16 @@ export class AdminController {
   }
 
   @Patch('/:id')
-  @RequirePermissions({
-    module: PermissionModule.USERS,
-    permission: 'update',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'update',
+    },
+    {
+      module: PermissionModule.ADMIN_LIST,
+      permission: 'update',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.UPDATE,
     description: 'Admin updated successfully',
@@ -120,10 +152,16 @@ export class AdminController {
   }
 
   @Delete('/:id')
-  @RequirePermissions({
-    module: PermissionModule.USERS,
-    permission: 'delete',
-  })
+  @RequirePermissions([
+    {
+      module: PermissionModule.ADMIN,
+      permission: 'delete',
+    },
+    {
+      module: PermissionModule.ADMIN_LIST,
+      permission: 'delete',
+    },
+  ])
   @LogActivity({
     action: ActivityAction.DELETE,
     description: 'Admin deleted successfully',

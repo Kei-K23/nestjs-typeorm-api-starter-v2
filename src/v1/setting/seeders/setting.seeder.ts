@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Setting } from '../entities/setting.entity';
 
 @Injectable()
 export class SettingSeeder {
+  private readonly logger = new Logger(SettingSeeder.name);
+
   constructor(
     @InjectRepository(Setting)
     private settingRepository: Repository<Setting>,
@@ -54,12 +56,12 @@ export class SettingSeeder {
       if (!existingSetting) {
         const setting = this.settingRepository.create(settingData);
         await this.settingRepository.save(setting);
-        console.log(`Created SMTP setting: ${settingData.key}`);
+        this.logger.log(`Created SMTP setting: ${settingData.key}`);
       } else {
-        console.log(`SMTP setting already exists: ${settingData.key}`);
+        this.logger.log(`SMTP setting already exists: ${settingData.key}`);
       }
     }
 
-    console.log('SMTP configuration seeding completed');
+    this.logger.log('SMTP configuration seeding completed');
   }
 }

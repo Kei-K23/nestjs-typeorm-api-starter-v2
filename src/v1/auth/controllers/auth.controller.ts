@@ -1,13 +1,15 @@
 import {
-  Controller,
-  Post,
   Body,
-  UseGuards,
-  Get,
-  Req,
+  Controller,
   Delete,
-  Patch,
+  Get,
   HttpCode,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { TwoFactorService } from '../services/two-factor.service';
@@ -30,6 +32,12 @@ import { VerifyPasswordResetOTPCodeDto } from '../dto/verify-password-reset-otp-
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { AdminLoginDto } from '../dto/admin-login.dto';
 import { UserLoginDto } from '../dto/user-login.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { UserRegisterOTPRequestDto } from '../dto/user-register-otp-request.dto';
+import { UserRegisterOTPVerifyDto } from '../dto/user-register-otp-verify.dto';
+import { UserRegisterAccountSetupDto } from '../dto/user-register-account-setup.dto';
+import { UserRegisterPasswordSetupDto } from '../dto/user-register-password-setup.dto';
 
 @Controller('api/v1/auth')
 export class AuthController {
@@ -53,6 +61,70 @@ export class AuthController {
     return ResponseUtil.success(result, 'User login successful');
   }
 
+  @Post('user-register-otp-request')
+  @HttpCode(200)
+  async userRegisterOTPRequest(
+    @Body() userRegisterOTPRequestDto: UserRegisterOTPRequestDto,
+  ) {
+    const result = await this.authService.userRegisterOTPRequest(
+      userRegisterOTPRequestDto,
+    );
+    return ResponseUtil.success(result, 'User register request successful');
+  }
+
+  @Post('user-register-otp-verify')
+  @HttpCode(200)
+  async userRegisterOTPVerify(
+    @Body() userRegisterOTPVerifyDto: UserRegisterOTPVerifyDto,
+  ) {
+    const result = await this.authService.userRegisterOTPVerify(
+      userRegisterOTPVerifyDto,
+    );
+    return ResponseUtil.success(result, 'User register OTP verify successful');
+  }
+
+  @Post('user-register-password-setup')
+  @HttpCode(200)
+  async userRegisterPasswordSetup(
+    @Body() userRegisterPasswordSetupDto: UserRegisterPasswordSetupDto,
+  ) {
+    const result = await this.authService.userRegisterPasswordSetup(
+      userRegisterPasswordSetupDto,
+    );
+    return ResponseUtil.success(
+      result,
+      'User register password setup successful',
+    );
+  }
+
+  @Post('user-register-account-setup')
+  @UseInterceptors(
+    FileInterceptor('profileImage', {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        if (!file?.mimetype) return cb(null, false);
+        cb(null, true);
+      },
+    }),
+  )
+  @HttpCode(200)
+  async userRegisterAccountSetup(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() userRegisterAccountSetupDto: UserRegisterAccountSetupDto,
+    @Req() request: Request,
+  ) {
+    const result = await this.authService.userRegisterAccountSetup(
+      userRegisterAccountSetupDto,
+      file,
+      request,
+    );
+    return ResponseUtil.success(
+      result,
+      'User register account setup successful',
+    );
+  }
+
   @Post('refresh')
   @HttpCode(200)
   async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
@@ -71,8 +143,11 @@ export class AuthController {
     resourceType: 'user',
     getResourceId: (result: AuthenticatedUser) => result.id?.toString(),
   })
-  async logout(@Body() refreshTokenDto: RefreshTokenDto) {
-    await this.authService.logout(refreshTokenDto.refreshToken);
+  async logout(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    await this.authService.logout(refreshTokenDto.refreshToken, user);
     return ResponseUtil.success(null, 'Logout successful');
   }
 
@@ -92,9 +167,20 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
+  @UseInterceptors(
+    FileInterceptor('profileImage', {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        if (!file?.mimetype) return cb(null, false);
+        cb(null, true);
+      },
+    }),
+  )
   @HttpCode(200)
   async updateProfile(
     @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: Express.Multer.File,
     @Body() updateProfileDto: UpdateProfileDto,
     @Req() request: Request,
   ) {
@@ -103,6 +189,7 @@ export class AuthController {
       user.subjectType,
       updateProfileDto,
       request,
+      file,
     );
     return ResponseUtil.success(updatedUser, 'Profile updated successfully');
   }

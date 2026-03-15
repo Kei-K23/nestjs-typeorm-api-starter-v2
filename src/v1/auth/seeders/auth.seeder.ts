@@ -65,37 +65,79 @@ export class AuthSeeder {
 
   async seed() {
     const modulesToSeed: ModuleSeed[] = [
-      { name: 'Users', code: PermissionModule.USERS },
-      { name: 'Admins', code: PermissionModule.ADMINS },
-      { name: 'Roles', code: PermissionModule.ROLES },
-      { name: 'Activity Logs', code: PermissionModule.ACTIVITY_LOGS },
       {
-        name: 'Settings',
-        code: PermissionModule.SETTINGS,
+        name: 'Admin',
+        code: PermissionModule.ADMIN,
         children: [
           {
-            name: 'SMTP Settings',
-            code: PermissionModule.SMTP_SETTINGS,
+            name: 'Admin List',
+            code: PermissionModule.ADMIN_LIST,
           },
           {
-            name: 'TNC Settings',
-            code: PermissionModule.TNC_SETTINGS,
+            name: 'Admin Role Permissions',
+            code: PermissionModule.ADMIN_ROLE_PERMISSIONS,
+          },
+          {
+            name: 'Admin User Logs',
+            code: PermissionModule.ADMIN_USER_LOGS,
+          },
+          {
+            name: 'Admin Audit Logs',
+            code: PermissionModule.ADMIN_AUDIT_LOGS,
           },
         ],
       },
       {
-        name: 'Package',
-        code: PermissionModule.PACKAGES,
+        name: 'Reporting',
+        code: PermissionModule.REPORTING,
         children: [
           {
-            name: 'Package Plan',
-            code: PermissionModule.PACKAGE_PLAN,
+            name: 'Application User Report',
+            code: PermissionModule.REPORTING_APPLICATION_USER_REPORT,
           },
           {
-            name: 'Package Scholarship',
-            code: PermissionModule.PACKAGE_SCHOLARSHIP,
+            name: 'Transaction Report',
+            code: PermissionModule.REPORTING_TRANSACTION_REPORT,
           },
         ],
+      },
+      {
+        name: 'Setting',
+        code: PermissionModule.SETTING,
+        children: [
+          {
+            name: 'Quiz Setting',
+            code: PermissionModule.SETTING_QUIZ,
+          },
+          {
+            name: 'FAQ Setting',
+            code: PermissionModule.SETTING_FAQ,
+          },
+          {
+            name: 'PNV Setting',
+            code: PermissionModule.SETTING_PNV,
+          },
+          {
+            name: 'TNC Setting',
+            code: PermissionModule.SETTING_TNC,
+          },
+          {
+            name: 'Banner Setting',
+            code: PermissionModule.SETTING_BANNER,
+          },
+          {
+            name: 'Ads Setting',
+            code: PermissionModule.SETTING_ADS,
+          },
+          {
+            name: 'SMTP Setting',
+            code: PermissionModule.SETTING_SMTP,
+          },
+        ],
+      },
+      {
+        name: 'Announcements',
+        code: PermissionModule.ANNOUNCEMENTS,
       },
       {
         name: 'Academic',
@@ -116,6 +158,42 @@ export class AuthSeeder {
             code: PermissionModule.ACADEMIC_TUTORIALS,
           },
         ],
+      },
+      {
+        name: 'Package',
+        code: PermissionModule.PACKAGE,
+        children: [
+          {
+            name: 'Package List',
+            code: PermissionModule.PACKAGE_LIST,
+          },
+          {
+            name: 'Package User Access',
+            code: PermissionModule.PACKAGE_USER_ACCESS,
+          },
+        ],
+      },
+      {
+        name: 'Application User',
+        code: PermissionModule.APPLICATION_USER,
+        children: [
+          {
+            name: 'Application User List',
+            code: PermissionModule.APPLICATION_USER_LIST,
+          },
+          {
+            name: 'Application Subscription Report',
+            code: PermissionModule.APPLICATION_SUBSCRIPTION_REPORT,
+          },
+          {
+            name: 'Application Ban User',
+            code: PermissionModule.APPLICATION_BAN_USER,
+          },
+        ],
+      },
+      {
+        name: 'Quiz Result',
+        code: PermissionModule.QUIZ_RESULT,
       },
     ];
 

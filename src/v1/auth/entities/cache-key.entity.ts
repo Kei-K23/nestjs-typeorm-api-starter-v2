@@ -8,6 +8,7 @@ import {
   BeforeInsert,
   BeforeUpdate,
   PrimaryColumn,
+  Relation,
 } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from 'src/v1/user/entities/user.entity';
@@ -35,14 +36,14 @@ export class CacheKey {
 
   @ManyToOne(() => User, (user) => user.cacheKeys)
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user: Relation<User>;
 
   @Column({ nullable: true })
   adminId: string | null;
 
   @ManyToOne(() => Admin, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'adminId' })
-  admin: Admin;
+  admin: Relation<Admin>;
 
   @Column({
     type: 'enum',

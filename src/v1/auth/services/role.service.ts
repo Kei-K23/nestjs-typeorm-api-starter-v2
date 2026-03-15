@@ -10,6 +10,7 @@ import {
   DataSource,
   EntityManager,
   FindManyOptions,
+  ILike,
 } from 'typeorm';
 import { Role } from '../entities/role.entity';
 import { Permission } from '../entities/permission.entity';
@@ -30,7 +31,12 @@ export class RoleService {
     private dataSource: DataSource,
   ) {}
 
-  async findAll(page: number = 1, limit: number = 10, getAll: boolean = false) {
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+    getAll: boolean = false,
+    search?: string,
+  ) {
     const skip = (page - 1) * limit;
     const findOptions: FindManyOptions<Role> = {
       order: { createdAt: 'DESC' },
@@ -41,6 +47,13 @@ export class RoleService {
       ],
     };
 
+    if (search) {
+      findOptions.where = [
+        { name: ILike(`%${search}%`) },
+        { description: ILike(`%${search}%`) },
+      ];
+    }
+
     if (!getAll) {
       findOptions.skip = skip;
       findOptions.take = limit;
@@ -50,10 +63,15 @@ export class RoleService {
   }
 
   async findAllPermissions() {
-    return this.permissionRepository.find({
-      relations: ['module', 'module.parent', 'module.children'],
-      order: { createdAt: 'DESC' },
-    });
+    return this.permissionRepository
+      .createQueryBuilder('permission')
+      .leftJoinAndSelect('permission.module', 'module')
+      .leftJoinAndSelect('module.parent', 'parent')
+      .leftJoinAndSelect('module.children', 'children')
+      .leftJoinAndSelect('children.permissions', 'childrenOfChildren')
+      .orderBy('module.name', 'ASC')
+      .addOrderBy('permission.action', 'ASC')
+      .getMany();
   }
 
   async findOne(id: string): Promise<Role | null> {

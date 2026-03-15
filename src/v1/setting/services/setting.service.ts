@@ -5,6 +5,8 @@ import { plainToClass } from 'class-transformer';
 import { Setting } from '../entities/setting.entity';
 import { CreateSMTPDto } from '../dto/create-smtp-setting.dto';
 import { SMTPResponseDto } from '../dto/smtp-response.dto';
+import { CreatePrivacyPolicyDto } from '../dto/create-privacy-policy.dto';
+import { CreateTermAndConditionDto } from '../dto/create-term-and-condition.dto';
 
 @Injectable()
 export class SettingService {
@@ -78,6 +80,70 @@ export class SettingService {
     };
 
     return plainToClass(SMTPResponseDto, smtpData);
+  }
+
+  async createPrivacyPolicy(
+    createPrivacyPolicyDto: CreatePrivacyPolicyDto,
+  ): Promise<Setting> {
+    const { privacyPolicy } = createPrivacyPolicyDto;
+    let setting = await this.settingRepository.findOne({
+      where: { key: 'privacy_policy' },
+    });
+
+    if (setting) {
+      setting.value = privacyPolicy;
+    } else {
+      setting = this.settingRepository.create({
+        key: 'privacy_policy',
+        value: privacyPolicy,
+      });
+    }
+
+    return this.settingRepository.save(setting);
+  }
+
+  async getPrivacyPolicy(): Promise<Setting | null> {
+    const setting = await this.settingRepository.findOne({
+      where: { key: 'privacy_policy' },
+    });
+
+    if (!setting) {
+      return null;
+    }
+
+    return setting;
+  }
+
+  async createTermAndCondition(
+    createTermAndConditionDto: CreateTermAndConditionDto,
+  ): Promise<Setting> {
+    const { termAndCondition } = createTermAndConditionDto;
+    let setting = await this.settingRepository.findOne({
+      where: { key: 'term_and_condition' },
+    });
+
+    if (setting) {
+      setting.value = termAndCondition;
+    } else {
+      setting = this.settingRepository.create({
+        key: 'term_and_condition',
+        value: termAndCondition,
+      });
+    }
+
+    return this.settingRepository.save(setting);
+  }
+
+  async getTermAndCondition(): Promise<Setting | null> {
+    const setting = await this.settingRepository.findOne({
+      where: { key: 'term_and_condition' },
+    });
+
+    if (!setting) {
+      return null;
+    }
+
+    return setting;
   }
 
   private getSettingValue(settings: Setting[], key: string): string {

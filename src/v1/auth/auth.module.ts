@@ -15,6 +15,7 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { CacheKey } from './entities/cache-key.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { User } from 'src/v1/user/entities/user.entity';
@@ -58,6 +59,7 @@ import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
     EmailServiceUtils,
     JwtStrategy,
     JwtAuthGuard,
+    OptionalJwtAuthGuard,
     PermissionsGuard,
     RolesGuard,
     AuthSeeder,
@@ -69,6 +71,7 @@ import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
     TwoFactorService,
     EmailServiceUtils,
     JwtAuthGuard,
+    OptionalJwtAuthGuard,
     PermissionsGuard,
     RolesGuard,
   ],

@@ -46,6 +46,34 @@ export class FaqService {
     };
   }
 
+  async findAllForMobile(filter: FilterFaqDto) {
+    const { getAll, limit, page } = filter;
+    const skip = (page - 1) * limit;
+
+    const qb = this.faqRepository
+      .createQueryBuilder('faq')
+      .orderBy('faq.createdAt', 'DESC');
+
+    if (!getAll) {
+      qb.skip(skip).take(limit);
+    }
+
+    if (filter.search) {
+      qb.andWhere('(faq.question ILIKE :term OR faq.answer ILIKE :term)', {
+        term: `%${filter.search}%`,
+      });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+    };
+  }
+
   async update(id: string, updateDto: UpdateFaqDto): Promise<Faq> {
     const existing = await this.faqRepository.findOne({
       where: { id },
