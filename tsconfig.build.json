@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "cli/easy-generate/templates",
+    "test",
+    "dist",
+    "**/*spec.ts"
+  ]
+}

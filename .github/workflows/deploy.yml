@@ -1,0 +1,76 @@
+name: Deploy Pann Thee DEV App
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Create deployment archive
+        run: |
+          tar -czf release.tar.gz \
+          dist \
+          package.json \
+          package-lock.json
+
+      - name: Upload build to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: 'release.tar.gz'
+          target: '/www/wwwroot/projects/${{ secrets.FOLDER_NAME }}'
+
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+
+            cd /www/wwwroot/projects/${{ secrets.FOLDER_NAME }}
+
+            # extract release
+            tar -xzf release.tar.gz
+            rm release.tar.gz
+
+            # load nvm
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            nvm install 20
+            nvm use 20
+
+            # install production dependencies
+            npm ci --omit=dev
+
+            # run migrations
+            npm run migration:run:prod
+
+            # restart app
+            pm2 reload ${{ secrets.FOLDER_NAME }} || \
+            pm2 start dist/src/main.js --name ${{ secrets.FOLDER_NAME }} || \
+            pm2 start dist/main.js --name ${{ secrets.FOLDER_NAME }}
+
+            pm2 save
