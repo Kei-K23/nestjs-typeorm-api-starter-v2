@@ -24,7 +24,7 @@ import { ApiResponse } from 'src/common/interfaces/api-response.interface';
 import { ResponseUtil } from 'src/common/utils/response.util';
 import { FilterRoleDto } from '../dto/filter-role.dto';
 
-@Controller('api/v1/roles')
+@Controller({ path: 'roles', version: '1' })
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}

@@ -43,7 +43,8 @@ import { NotificationModule } from 'src/notification/notification.module';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: configService.get<number>('JWT_EXPIRATION', 172800000),
+          // Default: 15 minutes (900000ms). Override via JWT_EXPIRATION env var.
+          expiresIn: configService.get<number>('JWT_EXPIRATION', 900000),
         },
       }),
       inject: [ConfigService],

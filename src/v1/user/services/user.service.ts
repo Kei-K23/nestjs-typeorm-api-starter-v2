@@ -5,13 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { FilterUserDto } from '../dto/filter-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
+import { FileUploadService } from 'src/common/services/file-upload.service';
 
 @Injectable()
 export class UserService {
@@ -21,6 +21,7 @@ export class UserService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private s3ClientUtils: S3ClientUtils,
+    private fileUploadService: FileUploadService,
   ) {}
 
   async create(createUserDto: CreateUserDto, file?: Express.Multer.File) {
@@ -37,18 +38,12 @@ export class UserService {
     let profileImageUrl = createUserDto.profileImageUrl || '';
 
     if (file) {
-      const original = file.originalname?.trim() || 'profile';
-      const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const key = `${randomUUID()}-${sanitized}`;
-      const res = await this.s3ClientUtils.uploadFile({
-        key,
-        body: file.buffer,
-        contentType: file.mimetype,
-        path: 'users/profile',
-        metadata: { filename: original },
-      });
-      if (res.success && res.key) {
-        profileImageUrl = res.key;
+      const uploadedKey = await this.fileUploadService.uploadProfileImage(
+        file,
+        'users/profile',
+      );
+      if (uploadedKey) {
+        profileImageUrl = uploadedKey;
       }
     }
 
@@ -167,18 +162,12 @@ export class UserService {
     let newProfileImageUrl = existingUser.profileImageUrl || '';
 
     if (file) {
-      const original = file.originalname?.trim() || 'profile';
-      const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const key = `${randomUUID()}-${sanitized}`;
-      const res = await this.s3ClientUtils.uploadFile({
-        key,
-        body: file.buffer,
-        contentType: file.mimetype,
-        path: 'users/profile',
-        metadata: { filename: original },
-      });
-      if (res.success && res.key) {
-        newProfileImageUrl = res.key;
+      const uploadedKey = await this.fileUploadService.uploadProfileImage(
+        file,
+        'users/profile',
+      );
+      if (uploadedKey) {
+        newProfileImageUrl = uploadedKey;
       }
     } else if (hasBodyProfileImageUrl) {
       newProfileImageUrl = updateUserDto.profileImageUrl || '';

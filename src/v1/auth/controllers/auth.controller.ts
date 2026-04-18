@@ -42,7 +42,7 @@ import { UserRegisterPasswordSetupDto } from '../dto/user-register-password-setu
 import { UserGoogleLoginDto } from '../dto/user-google-login.dto';
 import { UserAppleLoginDto } from '../dto/user-apple-login.dto';
 
-@Controller('api/v1/auth')
+@Controller({ path: 'auth', version: '1' })
 export class AuthController {
   constructor(
     private authService: AuthService,

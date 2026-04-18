@@ -91,8 +91,10 @@ export class ActivityLogInterceptor implements NestInterceptor {
         metadata: {
           method: request.method,
           url: request.url,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          body: request.method !== 'GET' ? request.body : undefined,
+          body:
+            request.method !== 'GET'
+              ? this.sanitizeBody(request.body as Record<string, unknown>)
+              : undefined,
         },
       };
 
@@ -111,6 +113,35 @@ export class ActivityLogInterceptor implements NestInterceptor {
     } catch (error) {
       this.logger.error('Failed to log activity:', error);
     }
+  }
+
+  private readonly SENSITIVE_KEYS = new Set([
+    'password',
+    'currentPassword',
+    'newPassword',
+    'confirmPassword',
+    'token',
+    'accessToken',
+    'refreshToken',
+    'otp',
+    'code',
+    'secret',
+  ]);
+
+  private sanitizeBody(
+    body: Record<string, unknown>,
+  ): Record<string, unknown> {
+    if (!body || typeof body !== 'object') return body;
+    return Object.fromEntries(
+      Object.entries(body).map(([key, value]) => [
+        key,
+        this.SENSITIVE_KEYS.has(key)
+          ? '[REDACTED]'
+          : typeof value === 'object' && value !== null
+            ? this.sanitizeBody(value as Record<string, unknown>)
+            : value,
+      ]),
+    );
   }
 
   private getClientIp(request: Request): string {

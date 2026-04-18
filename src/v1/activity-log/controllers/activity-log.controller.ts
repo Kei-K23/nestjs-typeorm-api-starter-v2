@@ -7,7 +7,7 @@ import { RequirePermissions } from 'src/v1/auth/decorators/permissions.decorator
 import { PermissionModule } from 'src/v1/auth/entities/permission.entity';
 import { ResponseUtil } from 'src/common/utils/response.util';
 
-@Controller('/api/v1/')
+@Controller({ path: '/', version: '1' })
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ActivityLogController {
   constructor(private readonly activityLogService: ActivityLogService) {}

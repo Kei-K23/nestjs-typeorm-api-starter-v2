@@ -226,20 +226,6 @@ export class TwoFactorService {
       return false;
     }
 
-    // Check if code has expired
-    if (new Date() > cacheKey.expiresAt) {
-      cacheKey.status = CacheKeyStatus.EXPIRED;
-      await this.cacheKeyRepository.save(cacheKey);
-      return false;
-    }
-
-    // Check if max attempts reached
-    if (cacheKey.attempts >= cacheKey.maxAttempts) {
-      cacheKey.status = CacheKeyStatus.EXPIRED;
-      await this.cacheKeyRepository.save(cacheKey);
-      return false;
-    }
-
     // Increment attempts
     cacheKey.attempts += 1;
 

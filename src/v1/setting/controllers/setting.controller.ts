@@ -19,7 +19,7 @@ import { ResponseUtil } from 'src/common/utils/response.util';
 import { ApiResponse } from 'src/common/interfaces/api-response.interface';
 import { CreateSMTPDto } from '../dto/create-smtp-setting.dto';
 
-@Controller('api/v1/settings')
+@Controller({ path: 'settings', version: '1' })
 @UseGuards(JwtAuthGuard)
 export class SettingController {
   constructor(private readonly settingService: SettingService) {}

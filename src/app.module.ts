@@ -1,7 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { envValidationSchema } from './common/config/env.validation';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { BullModule } from '@nestjs/bullmq';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -18,6 +20,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-store';
 import { NotificationModule } from './notification/notification.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -44,6 +47,10 @@ import { NotificationModule } from './notification/notification.module';
     }),
     ConfigModule.forRoot({
       isGlobal: true,
+      validationSchema: envValidationSchema,
+      validationOptions: {
+        abortEarly: false,
+      },
     }),
     CacheModule.registerAsync({
       isGlobal: true,
@@ -65,8 +72,8 @@ import { NotificationModule } from './notification/notification.module';
     ActivityLogModule,
     UserModule,
     AdminModule,
-    ActivityLogModule,
     SettingModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
@@ -81,4 +88,8 @@ import { NotificationModule } from './notification/notification.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
+  }
+}

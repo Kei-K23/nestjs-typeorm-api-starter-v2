@@ -27,7 +27,7 @@ import { CreateAdminDto } from '../dto/create-admin.dto';
 import { UpdateAdminDto } from '../dto/update-admin.dto';
 import { FilterAdminDto } from '../dto/filter-admin.dto';
 
-@Controller('api/v1/admins')
+@Controller({ path: 'admins', version: '1' })
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AdminController {

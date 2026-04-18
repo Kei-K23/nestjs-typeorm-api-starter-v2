@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Read(//Users/arkarmin/.npm/**)",
+      "Read(//Users/arkarmin/Desktop/personal-projects/nestjs-typeorm-api-starter-v2/**)",
+      "Bash(npm run:*)"
+    ]
+  }
+}

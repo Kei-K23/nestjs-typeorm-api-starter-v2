@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, Matches } from 'class-validator';
+import { IsNotEmpty, IsString, Length, Matches } from 'class-validator';
 
 export class UserRegisterOTPVerifyDto {
   @IsString({ message: 'Phone must be a string' })
@@ -10,6 +10,7 @@ export class UserRegisterOTPVerifyDto {
 
   @IsString({ message: 'OTP must be a string' })
   @IsNotEmpty({ message: 'OTP is required' })
+  @Length(6, 6, { message: 'OTP must be exactly 6 digits' })
   otp: string;
 
   @IsString({ message: 'FCM token must be a string' })

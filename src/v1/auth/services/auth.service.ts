@@ -43,6 +43,7 @@ import { VerifyPasswordResetOTPCodeDto } from '../dto/verify-password-reset-otp-
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { UserRegisterOTPRequestDto } from '../dto/user-register-otp-request.dto';
 import { SMSPhoServiceUtils } from 'src/common/utils/sms-pho-service.utils';
+import { FileUploadService } from 'src/common/services/file-upload.service';
 import { UserRegisterOTPVerifyDto } from '../dto/user-register-otp-verify.dto';
 import { UserRegisterPasswordSetupDto } from '../dto/user-register-password-setup.dto';
 import { UserRegisterAccountSetupDto } from '../dto/user-register-account-setup.dto';
@@ -71,6 +72,7 @@ export class AuthService {
     private s3ClientUtils: S3ClientUtils,
     private emailServiceUtils: EmailServiceUtils,
     private smsPhoServiceUtils: SMSPhoServiceUtils,
+    private fileUploadService: FileUploadService,
   ) {}
 
   async validateAdmin(email: string, plainPassword: string) {
@@ -123,7 +125,7 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
 
     await this.revokeAllUserTokens(user.id, false);
-    const refreshToken = await this.generateRefreshToken(user.id);
+    const refreshToken = await this.generateRefreshToken(user.id, 'user');
 
     const { device, browser, os } = parseUserAgent(request);
     const userActivityLog = this.userActivityLogRepository.create({
@@ -146,7 +148,7 @@ export class AuthService {
       refreshToken,
       accessTokenExpiresAt: this.configService.get<number>(
         'JWT_EXPIRATION',
-        172800000,
+        900000,
       ),
       refreshTokenExpiresAt: this.configService.get<number>(
         'JWT_REFRESH_EXPIRATION',
@@ -293,11 +295,6 @@ export class AuthService {
   async userRegisterOTPRequest(
     userRegisterOTPRequest: UserRegisterOTPRequestDto,
   ) {
-    const isDevelopment =
-      this.configService.get('NODE_ENV') === 'development' ||
-      this.configService.get('TEST_USER_PHONE') ===
-        userRegisterOTPRequest.phone;
-
     const user = await this.userRepository.findOne({
       where: {
         phone: userRegisterOTPRequest.phone,
@@ -310,13 +307,6 @@ export class AuthService {
         `User with phone '${userRegisterOTPRequest.phone}' already exists`,
       );
       throw new UnauthorizedException('User already exists');
-    }
-
-    if (isDevelopment) {
-      return {
-        requestId: 123456,
-        message: 'OTP verification code sent to your phone',
-      };
     }
 
     const { success, requestId } = await this.smsPhoServiceUtils.sendOTP({
@@ -338,10 +328,6 @@ export class AuthService {
   }
 
   async userRegisterOTPVerify(userRegisterOTPVerify: UserRegisterOTPVerifyDto) {
-    const isDevelopment =
-      this.configService.get('NODE_ENV') === 'development' ||
-      this.configService.get('TEST_USER_PHONE') === userRegisterOTPVerify.phone;
-
     const user = await this.userRepository.findOne({
       where: {
         phone: userRegisterOTPVerify.phone,
@@ -380,26 +366,6 @@ export class AuthService {
         throw new UnauthorizedException(
           'User is already ACCOUNT_SETUP and cannot be registered again',
         );
-      }
-    }
-
-    if (isDevelopment) {
-      if (
-        userRegisterOTPVerify.otp === '123456' &&
-        userRegisterOTPVerify.requestId === '123456'
-      ) {
-        const newUser = this.userRepository.create({
-          fcmToken: userRegisterOTPVerify.fcmToken,
-          registrationStage: UserRegistrationStage.OTP_VERIFY,
-          phone: userRegisterOTPVerify.phone,
-        });
-        await this.userRepository.save(newUser);
-        return {
-          userId: newUser.id,
-          currentUserRegistrationStage: newUser.registrationStage,
-          nextUserRegistrationStage: UserRegistrationStage.PASSWORD_SETUP,
-          message: 'OTP verification succeeded',
-        };
       }
     }
 
@@ -504,18 +470,12 @@ export class AuthService {
       userRegisterAccountSetupDto.profileImageUrl ?? existingProfileImageUrl;
 
     if (file) {
-      const original = file.originalname?.trim() || 'profile';
-      const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const key = `${crypto.randomUUID()}-${sanitized}`;
-      const res = await this.s3ClientUtils.uploadFile({
-        key,
-        body: file.buffer,
-        contentType: file.mimetype,
-        path: 'users/profile',
-        metadata: { filename: original },
-      });
-      if (res.success && res.key) {
-        newProfileImageUrl = res.key;
+      const uploadedKey = await this.fileUploadService.uploadProfileImage(
+        file,
+        'users/profile',
+      );
+      if (uploadedKey) {
+        newProfileImageUrl = uploadedKey;
       }
     }
 
@@ -633,7 +593,7 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
     await this.revokeAllAdminTokens(admin.id);
 
-    const refreshToken = await this.generateAdminRefreshToken(admin.id);
+    const refreshToken = await this.generateRefreshToken(admin.id, 'admin');
 
     const { device, browser, os } = parseUserAgent(request);
     const userActivityLog = this.userActivityLogRepository.create({
@@ -658,7 +618,7 @@ export class AuthService {
       refreshToken,
       accessTokenExpiresAt: this.configService.get<number>(
         'JWT_EXPIRATION',
-        172800000,
+        900000,
       ),
       refreshTokenExpiresAt: this.configService.get<number>(
         'JWT_REFRESH_EXPIRATION',
@@ -671,8 +631,13 @@ export class AuthService {
   }
 
   async refreshAccessToken(refreshTokenString: string) {
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(refreshTokenString)
+      .digest('hex');
+
     const refreshToken = await this.refreshTokenRepository.findOne({
-      where: { token: refreshTokenString, isRevoked: false },
+      where: { token: tokenHash, isRevoked: false },
       relations: [
         'user',
         'admin',
@@ -738,7 +703,7 @@ export class AuthService {
       accessToken,
       accessTokenExpiresAt: this.configService.get<number>(
         'JWT_EXPIRATION',
-        172800000,
+        900000,
       ),
       user: {
         id: ownerId,
@@ -747,8 +712,13 @@ export class AuthService {
   }
 
   async logout(refreshTokenString: string, user: AuthenticatedUser) {
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(refreshTokenString)
+      .digest('hex');
+
     const refreshToken = await this.refreshTokenRepository.findOne({
-      where: { token: refreshTokenString },
+      where: { token: tokenHash },
     });
 
     if (refreshToken) {
@@ -786,9 +756,17 @@ export class AuthService {
     );
   }
 
-  private async generateRefreshToken(userId: string): Promise<string> {
+  /**
+   * Generates a refresh token, stores a SHA-256 hash in the database,
+   * and returns the plaintext token to the caller.
+   * Storing a hash ensures that a database leak does not expose active sessions.
+   */
+  private async generateRefreshToken(
+    ownerId: string,
+    ownerType: 'user' | 'admin',
+  ): Promise<string> {
     const token = this.jwtService.sign(
-      { sub: userId },
+      { sub: ownerId },
       {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         expiresIn: this.configService.get<number>(
@@ -798,37 +776,17 @@ export class AuthService {
       },
     );
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-
-    const refreshToken = this.refreshTokenRepository.create({
-      token,
-      userId,
-      expiresAt,
-    });
-
-    await this.refreshTokenRepository.save(refreshToken);
-    return token;
-  }
-
-  private async generateAdminRefreshToken(adminId: string): Promise<string> {
-    const token = this.jwtService.sign(
-      { sub: adminId },
-      {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<number>(
-          'JWT_REFRESH_EXPIRATION',
-          2592000000,
-        ),
-      },
-    );
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     const refreshToken = this.refreshTokenRepository.create({
-      token,
-      adminId,
+      token: tokenHash,
+      ...(ownerType === 'user' ? { userId: ownerId } : { adminId: ownerId }),
       expiresAt,
     });
 
@@ -860,18 +818,12 @@ export class AuthService {
       let newProfileImageUrl = admin.profileImageUrl || '';
 
       if (file) {
-        const original = file.originalname?.trim() || 'profile';
-        const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
-        const key = `${crypto.randomUUID()}-${sanitized}`;
-        const res = await this.s3ClientUtils.uploadFile({
-          key,
-          body: file.buffer,
-          contentType: file.mimetype,
-          path: 'admins/profile',
-          metadata: { filename: original },
-        });
-        if (res.success && res.key) {
-          newProfileImageUrl = res.key;
+        const uploadedKey = await this.fileUploadService.uploadProfileImage(
+          file,
+          'admins/profile',
+        );
+        if (uploadedKey) {
+          newProfileImageUrl = uploadedKey;
         }
       } else if (hasBodyProfileImageUrl) {
         newProfileImageUrl = updateProfileDto.profileImageUrl || '';
@@ -944,18 +896,12 @@ export class AuthService {
     let newProfileImageUrl = user.profileImageUrl || '';
 
     if (file) {
-      const original = file.originalname?.trim() || 'profile';
-      const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const key = `${crypto.randomUUID()}-${sanitized}`;
-      const res = await this.s3ClientUtils.uploadFile({
-        key,
-        body: file.buffer,
-        contentType: file.mimetype,
-        path: 'users/profile',
-        metadata: { filename: original },
-      });
-      if (res.success && res.key) {
-        newProfileImageUrl = res.key;
+      const uploadedKey = await this.fileUploadService.uploadProfileImage(
+        file,
+        'users/profile',
+      );
+      if (uploadedKey) {
+        newProfileImageUrl = uploadedKey;
       }
     } else if (hasBodyProfileImageUrl) {
       newProfileImageUrl = updateProfileDto.profileImageUrl || '';

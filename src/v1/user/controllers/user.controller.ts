@@ -28,7 +28,7 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 
-@Controller('api/v1/users')
+@Controller({ path: 'users', version: '1' })
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class UserController {

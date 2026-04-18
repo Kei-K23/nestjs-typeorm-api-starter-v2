@@ -13,8 +13,24 @@ export class SMSPhoServiceUtils {
   private readonly brand: string;
   private readonly fromName: string;
   private readonly enabled: boolean;
+  private readonly mockEnabled: boolean;
+
+  /** Mock OTP used when SMS_MOCK_ENABLED=true. Never hardcoded in business logic. */
+  static readonly MOCK_OTP = '000000';
+  static readonly MOCK_REQUEST_ID = 'mock-request-id';
 
   constructor(private readonly config: ConfigService) {
+    this.mockEnabled = config.get<string>('SMS_MOCK_ENABLED') === 'true';
+
+    if (this.mockEnabled) {
+      this.enabled = false;
+      this.accessToken = '';
+      this.apiBase = '';
+      this.brand = 'mock';
+      this.fromName = 'mock';
+      return;
+    }
+
     const key = this.config.get<string>('SMS_POH_API_KEY');
     const secret = this.config.get<string>('SMS_POH_API_SECRET_KEY');
     this.apiBase = this.config.get<string>('SMS_POH_BASE_API_URL') || '';
@@ -48,6 +64,13 @@ export class SMSPhoServiceUtils {
     success: boolean;
     requestId: string;
   }> {
+    if (this.mockEnabled) {
+      return {
+        success: true,
+        requestId: SMSPhoServiceUtils.MOCK_REQUEST_ID,
+      };
+    }
+
     if (!this.enabled) {
       throw new InternalServerErrorException('SMS provider is not configured');
     }
@@ -77,6 +100,20 @@ export class SMSPhoServiceUtils {
   }
 
   async verifyOTP(params: { requestId: string; code: string }) {
+    if (this.mockEnabled) {
+      const isValid =
+        params.requestId === SMSPhoServiceUtils.MOCK_REQUEST_ID &&
+        params.code === SMSPhoServiceUtils.MOCK_OTP;
+      if (!isValid) {
+        throw new BadRequestException('Invalid OTP or request ID');
+      }
+      return {
+        success: true,
+        verifiedAt: new Date().toISOString(),
+        to: 'mock',
+      };
+    }
+
     if (!this.enabled) {
       throw new InternalServerErrorException('SMS provider is not configured');
     }
