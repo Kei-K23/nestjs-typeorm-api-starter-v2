@@ -4,9 +4,23 @@ import { Repository } from 'typeorm';
 import * as nodemailer from 'nodemailer';
 import { Setting } from 'src/v1/setting/entities/setting.entity';
 
+interface SmtpConfig {
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUsername: string;
+  smtpPassword: string;
+  smtpFromEmail: string;
+  smtpFromName: string;
+  smtpEnabled: boolean;
+}
+
 @Injectable()
 export class EmailServiceUtils {
   private readonly logger = new Logger(EmailServiceUtils.name);
+  private smtpConfigCache: SmtpConfig | null = null;
+  private smtpConfigCachedAt = 0;
+  private readonly SMTP_CACHE_TTL_MS = 5 * 60 * 1000;
 
   constructor(
     @InjectRepository(Setting)
@@ -34,7 +48,12 @@ export class EmailServiceUtils {
     });
   }
 
-  private async getSMTPSettings() {
+  private async getSMTPSettings(): Promise<SmtpConfig> {
+    const now = Date.now();
+    if (this.smtpConfigCache && now - this.smtpConfigCachedAt < this.SMTP_CACHE_TTL_MS) {
+      return this.smtpConfigCache;
+    }
+
     const smtpKeys = [
       'smtp_host',
       'smtp_port',
@@ -50,7 +69,7 @@ export class EmailServiceUtils {
       where: smtpKeys.map((key) => ({ key })),
     });
 
-    return {
+    this.smtpConfigCache = {
       smtpHost: this.getSettingValue(settings, 'smtp_host'),
       smtpPort: parseInt(this.getSettingValue(settings, 'smtp_port') || '587'),
       smtpSecure: this.getSettingValue(settings, 'smtp_secure') === 'true',
@@ -60,6 +79,14 @@ export class EmailServiceUtils {
       smtpFromName: this.getSettingValue(settings, 'smtp_from_name'),
       smtpEnabled: this.getSettingValue(settings, 'smtp_enabled') === 'true',
     };
+    this.smtpConfigCachedAt = now;
+
+    return this.smtpConfigCache;
+  }
+
+  invalidateSmtpCache() {
+    this.smtpConfigCache = null;
+    this.smtpConfigCachedAt = 0;
   }
 
   private getSettingValue(settings: Setting[], key: string): string {

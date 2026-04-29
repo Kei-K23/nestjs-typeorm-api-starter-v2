@@ -1,12 +1,12 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../app.module';
+import { SeederModule } from './seeder.module';
 import { AuthSeeder } from '../v1/auth/seeders/auth.seeder';
 import { SettingSeeder } from '../v1/setting/seeders/setting.seeder';
 
 async function runSeeders() {
   console.log('🌱 Starting database seeding...');
 
-  const app = await NestFactory.createApplicationContext(AppModule);
+  const app = await NestFactory.createApplicationContext(SeederModule);
 
   try {
     // Get seeder instances

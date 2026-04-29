@@ -6,6 +6,7 @@ import { RolesGuard } from 'src/v1/auth/guards/roles.guard';
 import { RequirePermissions } from 'src/v1/auth/decorators/permissions.decorator';
 import { PermissionModule } from 'src/v1/auth/entities/permission.entity';
 import { ResponseUtil } from 'src/common/utils/response.util';
+import { ResolvePresignedUrls } from 'src/common/decorators/presigned-urls.decorator';
 
 @Controller({ path: '/', version: '1' })
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -13,6 +14,7 @@ export class ActivityLogController {
   constructor(private readonly activityLogService: ActivityLogService) {}
 
   @Get('user-logs')
+  @ResolvePresignedUrls('user.profileImageUrl')
   @RequirePermissions([
     {
       module: PermissionModule.ADMIN,
@@ -46,6 +48,7 @@ export class ActivityLogController {
   }
 
   @Get('audit-logs')
+  @ResolvePresignedUrls('user.profileImageUrl')
   @RequirePermissions([
     {
       module: PermissionModule.ADMIN,

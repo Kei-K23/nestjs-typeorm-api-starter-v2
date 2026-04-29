@@ -1,10 +1,10 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Init1773979652448 implements MigrationInterface {
-    name = 'Init1773979652448'
+export class Init1777384396524 implements MigrationInterface {
+    name = 'Init1777384396524'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE TABLE "modules" ("id" uuid NOT NULL, "name" character varying NOT NULL, "code" character varying NOT NULL, "parentId" uuid, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, CONSTRAINT "UQ_25b42b11ac8b697cdb2eddcef1a" UNIQUE ("code"), CONSTRAINT "PK_7dbefd488bd96c5bf31f0ce0c95" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "modules" ("id" uuid NOT NULL, "name" character varying NOT NULL, "code" character varying NOT NULL, "allowedActions" text NOT NULL DEFAULT 'CREATE,READ,UPDATE,DELETE', "parentId" uuid, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, CONSTRAINT "UQ_25b42b11ac8b697cdb2eddcef1a" UNIQUE ("code"), CONSTRAINT "PK_7dbefd488bd96c5bf31f0ce0c95" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_4fc2237062f5e034c8f0537af4" ON "modules" ("deletedAt") `);
         await queryRunner.query(`CREATE TABLE "permissions" ("id" uuid NOT NULL, "moduleId" uuid NOT NULL, "action" character varying NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, CONSTRAINT "PK_920331560282b8bd21bb02290df" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_7a0dec7dfde2c5c743fdadf9ba" ON "permissions" ("deletedAt") `);

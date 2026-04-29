@@ -1,40 +1,11 @@
-import {
-  Entity,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  DeleteDateColumn,
-  Index,
-  PrimaryColumn,
-  BeforeInsert,
-} from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
+import { Entity, Column } from 'typeorm';
+import { BaseEntity } from 'src/common/entities/base.entity';
 
 @Entity('settings')
-export class Setting {
-  @PrimaryColumn('uuid')
-  id: string;
-
+export class Setting extends BaseEntity {
   @Column({ nullable: false, unique: true })
   key: string;
 
   @Column({ nullable: true, default: '' })
   value: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  @Index()
-  @DeleteDateColumn()
-  deletedAt?: Date;
-
-  @BeforeInsert()
-  generateUUID() {
-    if (!this.id) {
-      this.id = uuidv4();
-    }
-  }
 }

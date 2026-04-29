@@ -93,23 +93,7 @@ export class UserService {
 
     const [data, total] = await qb.getManyAndCount();
 
-    // Add presigned URL to each user
-    const usersWithPresignedUrl = await Promise.all(
-      data.map(async (user) => {
-        user.profileImageUrl =
-          (await this.s3ClientUtils.generatePresignedUrl(
-            user.profileImageUrl || '',
-          )) || '';
-        return user;
-      }),
-    );
-
-    return {
-      data: usersWithPresignedUrl,
-      total,
-      page,
-      limit,
-    };
+    return { data, total, page, limit };
   }
 
   async findOne(id: string) {
@@ -119,12 +103,6 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID '${id}' not found`);
     }
-
-    // Add presigned URL to user
-    user.profileImageUrl =
-      (await this.s3ClientUtils.generatePresignedUrl(
-        user.profileImageUrl || '',
-      )) || '';
 
     return user;
   }

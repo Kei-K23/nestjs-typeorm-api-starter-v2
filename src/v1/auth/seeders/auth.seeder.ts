@@ -23,9 +23,11 @@ interface RoleConfig {
 interface ModuleSeed {
   name: string;
   code: PermissionModule;
+  allowedActions?: ActionType[];
   children?: {
     name: string;
     code: PermissionModule;
+    allowedActions?: ActionType[];
   }[];
 }
 
@@ -80,10 +82,12 @@ export class AuthSeeder {
           {
             name: 'Admin User Logs',
             code: PermissionModule.ADMIN_USER_LOGS,
+            allowedActions: [ActionType.READ],
           },
           {
             name: 'Admin Audit Logs',
             code: PermissionModule.ADMIN_AUDIT_LOGS,
+            allowedActions: [ActionType.READ],
           },
         ],
       },
@@ -105,10 +109,6 @@ export class AuthSeeder {
             name: 'Application User List',
             code: PermissionModule.APPLICATION_USER_LIST,
           },
-          {
-            name: 'Application Ban User',
-            code: PermissionModule.APPLICATION_BAN_USER,
-          },
         ],
       },
     ];
@@ -124,6 +124,9 @@ export class AuthSeeder {
         moduleEntity = this.moduleRepository.create({
           name: moduleSeed.name,
           code: moduleSeed.code,
+          ...(moduleSeed.allowedActions && {
+            allowedActions: moduleSeed.allowedActions,
+          }),
         });
         moduleEntity = await this.moduleRepository.save(moduleEntity);
       }
@@ -139,6 +142,9 @@ export class AuthSeeder {
               name: child.name,
               code: child.code,
               parentId: moduleEntity.id,
+              ...(child.allowedActions && {
+                allowedActions: child.allowedActions,
+              }),
             });
             childModule = await this.moduleRepository.save(childModule);
           }
@@ -195,21 +201,23 @@ export class AuthSeeder {
   private async createModulePermissions(
     module: ModuleEntity,
   ): Promise<Permission[]> {
+    const allowedActions = module.allowedActions?.length
+      ? module.allowedActions
+      : Object.values(ActionType);
+
     const permissions: Permission[] = [];
-    for (const actionType of Object.values(ActionType)) {
-      if (typeof actionType === 'string') {
-        const existing = await this.permissionRepository.findOne({
-          where: { moduleId: module.id, action: actionType },
+    for (const actionType of allowedActions) {
+      const existing = await this.permissionRepository.findOne({
+        where: { moduleId: module.id, action: actionType },
+      });
+      if (!existing) {
+        const p = this.permissionRepository.create({
+          moduleId: module.id,
+          action: actionType,
         });
-        if (!existing) {
-          const p = this.permissionRepository.create({
-            moduleId: module.id,
-            action: actionType as ActionType,
-          });
-          permissions.push(await this.permissionRepository.save(p));
-        } else {
-          permissions.push(existing);
-        }
+        permissions.push(await this.permissionRepository.save(p));
+      } else {
+        permissions.push(existing);
       }
     }
     return permissions;

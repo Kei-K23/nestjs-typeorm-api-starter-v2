@@ -2,27 +2,20 @@ import { Exclude } from 'class-transformer';
 import {
   Entity,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
   BeforeUpdate,
   BeforeInsert,
-  PrimaryColumn,
   Index,
-  DeleteDateColumn,
   ManyToOne,
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcryptjs';
 import { Role } from 'src/v1/auth/entities/role.entity';
 import { RefreshToken } from 'src/v1/auth/entities/refresh-token.entity';
+import { BaseEntity } from 'src/common/entities/base.entity';
 
 @Entity('admins')
-export class Admin {
-  @PrimaryColumn('uuid')
-  id: string;
-
+export class Admin extends BaseEntity {
   @Index()
   @Column()
   fullName: string;
@@ -55,25 +48,8 @@ export class Admin {
   @Column({ default: false })
   twoFactorEnabled: boolean;
 
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  @Index()
-  @DeleteDateColumn()
-  deletedAt?: Date;
-
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt: Date;
-
-  @BeforeInsert()
-  generateUUID() {
-    if (!this.id) {
-      this.id = uuidv4();
-    }
-  }
 
   @BeforeInsert()
   @BeforeUpdate()

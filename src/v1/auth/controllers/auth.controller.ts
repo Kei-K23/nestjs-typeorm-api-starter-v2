@@ -26,7 +26,7 @@ import { VerifyTwoFactorDto } from '../dto/verify-two-factor.dto';
 import { EnableTwoFactorDto } from '../dto/enable-two-factor.dto';
 import { DisableTwoFactorDto } from '../dto/disable-two-factor.dto';
 import { ResponseUtil } from 'src/common/utils/response.util';
-import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
+import { ResolvePresignedUrls } from 'src/common/decorators/presigned-urls.decorator';
 import { ForgotPasswordSendOTPDto } from '../dto/forgot-password-send-otp.dto';
 import { UserForgotPasswordSendOTPDto } from '../dto/user-forgot-password-send-otp.dto';
 import { VerifyPasswordResetOTPCodeDto } from '../dto/verify-password-reset-otp-code.dto';
@@ -34,7 +34,7 @@ import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { AdminLoginDto } from '../dto/admin-login.dto';
 import { UserLoginDto } from '../dto/user-login.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+import { profileImageInterceptorOptions } from 'src/common/utils/file-interceptor.util';
 import { UserRegisterOTPRequestDto } from '../dto/user-register-otp-request.dto';
 import { UserRegisterOTPVerifyDto } from '../dto/user-register-otp-verify.dto';
 import { UserRegisterAccountSetupDto } from '../dto/user-register-account-setup.dto';
@@ -47,7 +47,6 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private twoFactorService: TwoFactorService,
-    private s3ClientUtils: S3ClientUtils,
   ) {}
 
   @Post('admin-login')
@@ -127,16 +126,7 @@ export class AuthController {
   }
 
   @Post('user-register-account-setup')
-  @UseInterceptors(
-    FileInterceptor('profileImage', {
-      storage: memoryStorage(),
-      limits: { fileSize: 10 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
-        if (!file?.mimetype) return cb(null, false);
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('profileImage', profileImageInterceptorOptions))
   @HttpCode(200)
   async userRegisterAccountSetup(
     @UploadedFile() file: Express.Multer.File,
@@ -182,30 +172,14 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
+  @ResolvePresignedUrls('profileImageUrl')
   async getProfile(@CurrentUser() user: AuthenticatedUser) {
-    if (
-      user.profileImageUrl &&
-      (await this.s3ClientUtils.objectExists(user.profileImageUrl))
-    ) {
-      user.profileImageUrl =
-        (await this.s3ClientUtils.generatePresignedUrl(user.profileImageUrl)) ||
-        '';
-    }
     return ResponseUtil.success(user, 'Profile retrieved successfully');
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
-  @UseInterceptors(
-    FileInterceptor('profileImage', {
-      storage: memoryStorage(),
-      limits: { fileSize: 10 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
-        if (!file?.mimetype) return cb(null, false);
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('profileImage', profileImageInterceptorOptions))
   @HttpCode(200)
   async updateProfile(
     @CurrentUser() user: AuthenticatedUser,

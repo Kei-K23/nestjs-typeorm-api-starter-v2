@@ -2,18 +2,13 @@ import {
   Entity,
   Column,
   OneToMany,
-  CreateDateColumn,
-  UpdateDateColumn,
-  PrimaryColumn,
-  BeforeInsert,
-  DeleteDateColumn,
   Index,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
 import { RolePermission } from './role-permission.entity';
-import { v4 as uuidv4 } from 'uuid';
 import { ModuleEntity } from './module.entity';
+import { BaseEntity } from 'src/common/entities/base.entity';
 
 export enum ActionType {
   CREATE = 'CREATE',
@@ -34,16 +29,11 @@ export enum PermissionModule {
 
   APPLICATION_USER = 'APPLICATION_USER',
   APPLICATION_USER_LIST = 'APPLICATION_USER_LIST',
-  APPLICATION_SUBSCRIPTION_REPORT = 'APPLICATION_SUBSCRIPTION_REPORT',
-  APPLICATION_BAN_USER = 'APPLICATION_BAN_USER',
 }
 
 @Entity('permissions')
 @Index(['moduleId', 'action'], { unique: true })
-export class Permission {
-  @PrimaryColumn('uuid')
-  id: string;
-
+export class Permission extends BaseEntity {
   @Column('uuid')
   moduleId: string;
 
@@ -61,21 +51,4 @@ export class Permission {
     (rolePermission) => rolePermission.permission,
   )
   rolePermissions: RolePermission[];
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  @BeforeInsert()
-  generateUUID() {
-    if (!this.id) {
-      this.id = uuidv4();
-    }
-  }
-
-  @Index()
-  @DeleteDateColumn()
-  deletedAt?: Date;
 }

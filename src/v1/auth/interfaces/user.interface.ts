@@ -13,7 +13,7 @@ export type AuthenticatedAccount = (StrippedAdmin | StrippedUser) & {
 export type AuthenticatedUser = AuthenticatedAccount;
 
 export interface RequestWithUser extends Request {
-  params: any;
+  params: Record<string, string>;
   user: AuthenticatedUser;
 }
 

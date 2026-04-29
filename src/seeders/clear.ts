@@ -1,11 +1,11 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../app.module';
+import { SeederModule } from './seeder.module';
 import { DataSource } from 'typeorm';
 
 async function clearDatabase() {
   console.log('🧹 Starting database cleanup...');
 
-  const app = await NestFactory.createApplicationContext(AppModule);
+  const app = await NestFactory.createApplicationContext(SeederModule);
   const dataSource = app.get(DataSource);
 
   try {

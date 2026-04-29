@@ -26,6 +26,8 @@ import { Admin } from '../entities/admin.entity';
 import { CreateAdminDto } from '../dto/create-admin.dto';
 import { UpdateAdminDto } from '../dto/update-admin.dto';
 import { FilterAdminDto } from '../dto/filter-admin.dto';
+import { ResolvePresignedUrls } from 'src/common/decorators/presigned-urls.decorator';
+import { profileImageInterceptorOptions } from 'src/common/utils/file-interceptor.util';
 
 @Controller({ path: 'admins', version: '1' })
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
@@ -50,15 +52,7 @@ export class AdminController {
     resourceType: 'admin',
     getResourceId: (result: Admin) => result.id?.toString(),
   })
-  @UseInterceptors(
-    FileInterceptor('profileImage', {
-      limits: { fileSize: 10 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
-        if (!file?.mimetype) return cb(null, false);
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('profileImage', profileImageInterceptorOptions))
   async create(
     @UploadedFile() file: Express.Multer.File,
     @Body() createAdminDto: CreateAdminDto,
@@ -68,6 +62,7 @@ export class AdminController {
   }
 
   @Get()
+  @ResolvePresignedUrls('profileImageUrl')
   @RequirePermissions([
     {
       module: PermissionModule.ADMIN,
@@ -98,6 +93,7 @@ export class AdminController {
   }
 
   @Get('/:id')
+  @ResolvePresignedUrls('profileImageUrl')
   @RequirePermissions([
     {
       module: PermissionModule.ADMIN,
@@ -133,15 +129,7 @@ export class AdminController {
     resourceType: 'admin',
     getResourceId: (result: Admin) => result.id?.toString(),
   })
-  @UseInterceptors(
-    FileInterceptor('profileImage', {
-      limits: { fileSize: 10 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
-        if (!file?.mimetype) return cb(null, false);
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('profileImage', profileImageInterceptorOptions))
   async update(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,

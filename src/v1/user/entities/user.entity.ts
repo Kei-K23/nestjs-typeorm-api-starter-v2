@@ -1,20 +1,16 @@
 import { Exclude } from 'class-transformer';
 import { RefreshToken } from 'src/v1/auth/entities/refresh-token.entity';
-import { v4 as uuidv4 } from 'uuid';
 import {
   Entity,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
   OneToMany,
   BeforeUpdate,
   BeforeInsert,
-  PrimaryColumn,
   Index,
-  DeleteDateColumn,
 } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { CacheKey } from 'src/v1/auth/entities/cache-key.entity';
+import { BaseEntity } from 'src/common/entities/base.entity';
 
 export const LoginProvider = {
   SMS: 'sms',
@@ -30,15 +26,11 @@ export const UserRegistrationStage = {
   ACCOUNT_SETUP: 'accountSetup',
 } as const;
 
-// This creates a union type of the *values*
 export type UserRegistrationStage =
   (typeof UserRegistrationStage)[keyof typeof UserRegistrationStage];
 
 @Entity('users')
-export class User {
-  @PrimaryColumn('uuid')
-  id: string;
-
+export class User extends BaseEntity {
   @Index()
   @Column({ nullable: true })
   email: string;
@@ -81,12 +73,6 @@ export class User {
   @Column({ nullable: true, default: '' })
   fcmToken: string;
 
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt: Date;
 
@@ -96,10 +82,6 @@ export class User {
   @OneToMany(() => CacheKey, (cacheKey) => cacheKey.user)
   cacheKeys: CacheKey[];
 
-  @Index()
-  @DeleteDateColumn()
-  deletedAt?: Date;
-
   @Column({ type: 'varchar', nullable: true })
   googleId: string;
 
@@ -108,13 +90,6 @@ export class User {
 
   @Column({ type: 'varchar', nullable: true })
   loginProvider: LoginProvider;
-
-  @BeforeInsert()
-  generateUUID() {
-    if (!this.id) {
-      this.id = uuidv4();
-    }
-  }
 
   @BeforeInsert()
   @BeforeUpdate()

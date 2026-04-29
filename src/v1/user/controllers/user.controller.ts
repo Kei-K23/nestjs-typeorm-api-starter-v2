@@ -26,7 +26,8 @@ import { ResponseUtil } from 'src/common/utils/response.util';
 import { FilterUserDto } from '../dto/filter-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+import { ResolvePresignedUrls } from 'src/common/decorators/presigned-urls.decorator';
+import { profileImageInterceptorOptions } from 'src/common/utils/file-interceptor.util';
 
 @Controller({ path: 'users', version: '1' })
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
@@ -51,16 +52,7 @@ export class UserController {
     resourceType: 'user',
     getResourceId: (result: User) => result.id?.toString(),
   })
-  @UseInterceptors(
-    FileInterceptor('profileImage', {
-      storage: memoryStorage(),
-      limits: { fileSize: 10 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
-        if (!file?.mimetype) return cb(null, false);
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('profileImage', profileImageInterceptorOptions))
   async create(
     @UploadedFile() file: Express.Multer.File,
     @Body() createUserDto: CreateUserDto,
@@ -70,6 +62,7 @@ export class UserController {
   }
 
   @Get()
+  @ResolvePresignedUrls('profileImageUrl')
   @RequirePermissions([
     {
       module: PermissionModule.APPLICATION_USER,
@@ -100,6 +93,7 @@ export class UserController {
   }
 
   @Get('/:id')
+  @ResolvePresignedUrls('profileImageUrl')
   @RequirePermissions([
     {
       module: PermissionModule.APPLICATION_USER,
@@ -135,16 +129,7 @@ export class UserController {
     resourceType: 'user',
     getResourceId: (result: User) => result.id?.toString(),
   })
-  @UseInterceptors(
-    FileInterceptor('profileImage', {
-      storage: memoryStorage(),
-      limits: { fileSize: 10 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
-        if (!file?.mimetype) return cb(null, false);
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('profileImage', profileImageInterceptorOptions))
   async update(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,

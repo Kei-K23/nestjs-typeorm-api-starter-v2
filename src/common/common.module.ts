@@ -1,5 +1,7 @@
 import { Module, Global } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ResponseInterceptor } from './interceptors/response.interceptor';
+import { PresignedUrlInterceptor } from './interceptors/presigned-url.interceptor';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 import { S3ClientUtils } from './utils/s3-client.utils';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -18,6 +20,7 @@ import { FileUploadService } from './services/file-upload.service';
     EmailServiceUtils,
     SMSPhoServiceUtils,
     FileUploadService,
+    { provide: APP_INTERCEPTOR, useClass: PresignedUrlInterceptor },
   ],
   exports: [
     ResponseInterceptor,

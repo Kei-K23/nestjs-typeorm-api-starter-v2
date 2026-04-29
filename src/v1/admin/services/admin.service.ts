@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import { Admin } from '../entities/admin.entity';
 import { CreateAdminDto } from '../dto/create-admin.dto';
@@ -13,6 +12,7 @@ import { UpdateAdminDto } from '../dto/update-admin.dto';
 import { FilterAdminDto } from '../dto/filter-admin.dto';
 import { Role } from 'src/v1/auth/entities/role.entity';
 import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
+import { FileUploadService } from 'src/common/services/file-upload.service';
 
 @Injectable()
 export class AdminService {
@@ -24,6 +24,7 @@ export class AdminService {
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
     private s3ClientUtils: S3ClientUtils,
+    private fileUploadService: FileUploadService,
   ) {}
 
   async create(createAdminDto: CreateAdminDto, file?: Express.Multer.File) {
@@ -49,18 +50,12 @@ export class AdminService {
     let profileImageUrl = createAdminDto.profileImageUrl || '';
 
     if (file) {
-      const original = file.originalname?.trim() || 'profile';
-      const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const key = `${randomUUID()}-${sanitized}`;
-      const res = await this.s3ClientUtils.uploadFile({
-        key,
-        body: file.buffer,
-        contentType: file.mimetype,
-        path: 'admins/profile',
-        metadata: { filename: original },
-      });
-      if (res.success && res.key) {
-        profileImageUrl = res.key;
+      const uploadedKey = await this.fileUploadService.uploadProfileImage(
+        file,
+        'admins/profile',
+      );
+      if (uploadedKey) {
+        profileImageUrl = uploadedKey;
       }
     }
 
@@ -103,22 +98,7 @@ export class AdminService {
 
     const [data, total] = await qb.getManyAndCount();
 
-    const adminsWithPresignedUrl = await Promise.all(
-      data.map(async (admin) => {
-        admin.profileImageUrl =
-          (await this.s3ClientUtils.generatePresignedUrl(
-            admin.profileImageUrl || '',
-          )) || '';
-        return admin;
-      }),
-    );
-
-    return {
-      data: adminsWithPresignedUrl,
-      total,
-      page,
-      limit,
-    };
+    return { data, total, page, limit };
   }
 
   async findOne(id: string) {
@@ -134,11 +114,6 @@ export class AdminService {
     if (!admin) {
       throw new NotFoundException(`Admin with ID '${id}' not found`);
     }
-
-    admin.profileImageUrl =
-      (await this.s3ClientUtils.generatePresignedUrl(
-        admin.profileImageUrl || '',
-      )) || '';
 
     return admin;
   }
@@ -190,18 +165,12 @@ export class AdminService {
     let newProfileImageUrl = existingAdmin.profileImageUrl || '';
 
     if (file) {
-      const original = file.originalname?.trim() || 'profile';
-      const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const key = `${randomUUID()}-${sanitized}`;
-      const res = await this.s3ClientUtils.uploadFile({
-        key,
-        body: file.buffer,
-        contentType: file.mimetype,
-        path: 'admins/profile',
-        metadata: { filename: original },
-      });
-      if (res.success && res.key) {
-        newProfileImageUrl = res.key;
+      const uploadedKey = await this.fileUploadService.uploadProfileImage(
+        file,
+        'admins/profile',
+      );
+      if (uploadedKey) {
+        newProfileImageUrl = uploadedKey;
       }
     } else if (hasBodyProfileImageUrl) {
       newProfileImageUrl = updateAdminDto.profileImageUrl || '';

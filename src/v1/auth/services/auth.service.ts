@@ -649,12 +649,8 @@ export class AuthService {
     });
 
     if (!refreshToken) {
-      this.logger.warn(
-        `Invalid refresh token '${refreshTokenString}' provided`,
-      );
-      throw new UnauthorizedException(
-        `Invalid refresh token '${refreshTokenString}' provided`,
-      );
+      this.logger.warn('Invalid refresh token provided');
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
     const now = new Date();

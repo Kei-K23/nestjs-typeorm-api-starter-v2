@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { User } from 'src/v1/user/entities/user.entity';
 import { Admin } from 'src/v1/admin/entities/admin.entity';
 import {
@@ -8,10 +9,8 @@ import {
   CreateDateColumn,
   PrimaryColumn,
   BeforeInsert,
-  BeforeUpdate,
   Relation,
 } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 
 @Entity('refresh_tokens')
 export class RefreshToken {
@@ -49,10 +48,9 @@ export class RefreshToken {
   createdAt: Date;
 
   @BeforeInsert()
-  @BeforeUpdate()
   generateUUID() {
     if (!this.id) {
-      this.id = uuidv4();
+      this.id = randomUUID();
     }
   }
 }

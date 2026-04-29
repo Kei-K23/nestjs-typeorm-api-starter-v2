@@ -10,50 +10,62 @@ import { Response } from 'express';
 import { QueryFailedError } from 'typeorm';
 import { ResponseUtil } from '../utils/response.util';
 
+interface HttpExceptionResponseObject {
+  message?: string | string[];
+  details?: unknown;
+  statusCode?: number;
+  error?: string;
+}
+
+interface PostgresDriverError {
+  code?: string;
+  detail?: string;
+  constraint?: string;
+}
+
+type QueryFailedErrorWithDriver = QueryFailedError & {
+  driverError?: PostgresDriverError;
+};
+
+type RawPostgresError = Error & PostgresDriverError;
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
-    let details: any = null;
+    let details: unknown = null;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
       if (typeof exceptionResponse === 'object') {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        message = (exceptionResponse as any).message || exception.message;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        details = (exceptionResponse as any).details || null;
-
-        // Handle validation errors
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        if (Array.isArray((exceptionResponse as any).message)) {
-          message = 'Validation failed';
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-          details = (exceptionResponse as any).message;
-        }
+        const responseObj = exceptionResponse as HttpExceptionResponseObject;
+        message = Array.isArray(responseObj.message)
+          ? 'Validation failed'
+          : (responseObj.message ?? exception.message);
+        details = Array.isArray(responseObj.message)
+          ? responseObj.message
+          : (responseObj.details ?? null);
       } else {
-        message = exceptionResponse;
+        message = exceptionResponse as string;
       }
     } else if (exception instanceof QueryFailedError) {
-      // Handle database errors such as Postgres unique constraint violations
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const driverError: any = (exception as any).driverError || exception;
+      const driverError = (exception as QueryFailedErrorWithDriver).driverError;
       if (driverError?.code === '23505') {
         status = HttpStatus.CONFLICT;
-        const detail: string = driverError.detail || 'Duplicate key value';
+        const detail = driverError.detail ?? 'Duplicate key value';
         const parsed = this.parseUniqueConstraintDetail(detail);
         message = parsed.field
           ? `${parsed.field} already exists`
           : 'Duplicate value violates unique constraint';
         details = {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           constraint: driverError.constraint,
           detail,
           field: parsed.field,
@@ -62,18 +74,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
       } else {
         message = exception.message;
       }
-    } else if ((exception as any)?.code === '23505') {
-      // In case the raw PG error bubbles up without TypeORM wrapper
+    } else if (this.isRawPostgresError(exception) && exception.code === '23505') {
       status = HttpStatus.CONFLICT;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const detail: string = (exception as any).detail || 'Duplicate key value';
+      const detail = exception.detail ?? 'Duplicate key value';
       const parsed = this.parseUniqueConstraintDetail(detail);
       message = parsed.field
         ? `${parsed.field} already exists`
         : 'Duplicate value violates unique constraint';
       details = {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        constraint: (exception as any).constraint,
+        constraint: exception.constraint,
         detail,
         field: parsed.field,
         value: parsed.value,
@@ -82,7 +91,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = exception.message;
     }
 
-    // Log the error
     this.logger.error(
       `HTTP Exception: ${message}`,
       exception instanceof Error ? exception.stack : undefined,
@@ -98,24 +106,28 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.status(status).json(errorResponse);
   }
 
+  private isRawPostgresError(err: unknown): err is RawPostgresError {
+    return (
+      err instanceof Error &&
+      'code' in err &&
+      typeof (err as Record<string, unknown>).code === 'string'
+    );
+  }
+
   private getErrorName(status: number): string {
     switch (status) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       case HttpStatus.BAD_REQUEST:
         return 'Bad Request';
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       case HttpStatus.UNAUTHORIZED:
         return 'Unauthorized';
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       case HttpStatus.FORBIDDEN:
         return 'Forbidden';
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       case HttpStatus.NOT_FOUND:
         return 'Not Found';
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+      case HttpStatus.CONFLICT:
+        return 'Conflict';
       case HttpStatus.UNPROCESSABLE_ENTITY:
         return 'Validation Error';
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       case HttpStatus.INTERNAL_SERVER_ERROR:
         return 'Internal Server Error';
       default:
@@ -127,7 +139,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
     field?: string;
     value?: string;
   } {
-    // Typical Postgres detail: "Key (email)=(test@example.com) already exists."
     const match = /Key \((.+)\)=\((.+)\) already exists\./.exec(detail);
     if (match && match.length >= 3) {
       return { field: match[1], value: match[2] };

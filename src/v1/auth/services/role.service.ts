@@ -11,6 +11,7 @@ import {
   EntityManager,
   FindManyOptions,
   ILike,
+  In,
 } from 'typeorm';
 import { Role } from '../entities/role.entity';
 import { Permission } from '../entities/permission.entity';
@@ -231,8 +232,9 @@ export class RoleService {
       return;
     }
 
-    const existingPermissions =
-      await this.permissionRepository.findByIds(permissionIds);
+    const existingPermissions = await this.permissionRepository.findBy({
+      id: In(permissionIds),
+    });
 
     if (existingPermissions.length !== permissionIds.length) {
       const existingIds = existingPermissions.map((p) => p.id);

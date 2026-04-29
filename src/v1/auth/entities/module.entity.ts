@@ -4,28 +4,23 @@ import {
   OneToMany,
   ManyToOne,
   JoinColumn,
-  PrimaryColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  DeleteDateColumn,
   BeforeInsert,
   BeforeUpdate,
-  Index,
 } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 import slugify from 'slugify';
-import { Permission } from './permission.entity';
+import { ActionType, Permission } from './permission.entity';
+import { BaseEntity } from 'src/common/entities/base.entity';
 
 @Entity('modules')
-export class ModuleEntity {
-  @PrimaryColumn('uuid')
-  id: string;
-
+export class ModuleEntity extends BaseEntity {
   @Column()
   name: string;
 
   @Column({ unique: true })
   code: string;
+
+  @Column({ type: 'simple-array', default: 'CREATE,READ,UPDATE,DELETE' })
+  allowedActions: ActionType[];
 
   @Column({ type: 'uuid', nullable: true })
   parentId?: string;
@@ -42,23 +37,9 @@ export class ModuleEntity {
   @OneToMany(() => Permission, (permission) => permission.module)
   permissions: Permission[];
 
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  @Index()
-  @DeleteDateColumn()
-  deletedAt?: Date;
-
   @BeforeInsert()
   @BeforeUpdate()
-  normalizeFields() {
-    if (!this.id) {
-      this.id = uuidv4();
-    }
-
+  normalizeCode() {
     if (this.name && !this.code) {
       this.code = slugify(this.name, {
         lower: true,
