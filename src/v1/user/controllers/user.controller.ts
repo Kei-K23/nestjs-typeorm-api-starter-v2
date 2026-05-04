@@ -19,7 +19,7 @@ import { UserService } from '../services/user.service';
 import { RequirePermissions } from 'src/v1/auth/decorators/permissions.decorator';
 import { PermissionModule } from 'src/v1/auth/entities/permission.entity';
 import { LogActivity } from 'src/v1/activity-log/decorators/log-activity.decorator';
-import { ActivityAction } from 'src/v1/activity-log/entities/user-activity-log.entity';
+import { LogAction } from 'src/v1/activity-log/constants/log-action.enum';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { ResponseUtil } from 'src/common/utils/response.util';
@@ -36,18 +36,12 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
-  @RequirePermissions([
-    {
-      module: PermissionModule.APPLICATION_USER,
-      permission: 'create',
-    },
-    {
-      module: PermissionModule.APPLICATION_USER_LIST,
-      permission: 'create',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.APPLICATION_USER, permission: 'create' },
+    { module: PermissionModule.APPLICATION_USER_LIST, permission: 'create' },
+  )
   @LogActivity({
-    action: ActivityAction.CREATE,
+    action: LogAction.CREATE,
     description: 'User created successfully',
     resourceType: 'user',
     getResourceId: (result: User) => result.id?.toString(),
@@ -63,16 +57,10 @@ export class UserController {
 
   @Get()
   @ResolvePresignedUrls('profileImageUrl')
-  @RequirePermissions([
-    {
-      module: PermissionModule.APPLICATION_USER,
-      permission: 'read',
-    },
-    {
-      module: PermissionModule.APPLICATION_USER_LIST,
-      permission: 'read',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.APPLICATION_USER, permission: 'read' },
+    { module: PermissionModule.APPLICATION_USER_LIST, permission: 'read' },
+  )
   async findAll(@Query() filters: FilterUserDto) {
     const result = await this.userService.findAll(filters);
 
@@ -94,16 +82,10 @@ export class UserController {
 
   @Get('/:id')
   @ResolvePresignedUrls('profileImageUrl')
-  @RequirePermissions([
-    {
-      module: PermissionModule.APPLICATION_USER,
-      permission: 'read',
-    },
-    {
-      module: PermissionModule.APPLICATION_USER_LIST,
-      permission: 'read',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.APPLICATION_USER, permission: 'read' },
+    { module: PermissionModule.APPLICATION_USER_LIST, permission: 'read' },
+  )
   async findOne(@Param('id') id: string) {
     const user = await this.userService.findOne(id);
     return ResponseUtil.success(
@@ -113,18 +95,12 @@ export class UserController {
   }
 
   @Patch('/:id')
-  @RequirePermissions([
-    {
-      module: PermissionModule.APPLICATION_USER,
-      permission: 'update',
-    },
-    {
-      module: PermissionModule.APPLICATION_USER_LIST,
-      permission: 'update',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.APPLICATION_USER, permission: 'update' },
+    { module: PermissionModule.APPLICATION_USER_LIST, permission: 'update' },
+  )
   @LogActivity({
-    action: ActivityAction.UPDATE,
+    action: LogAction.UPDATE,
     description: 'User updated successfully',
     resourceType: 'user',
     getResourceId: (result: User) => result.id?.toString(),
@@ -140,18 +116,12 @@ export class UserController {
   }
 
   @Delete('/:id')
-  @RequirePermissions([
-    {
-      module: PermissionModule.APPLICATION_USER,
-      permission: 'delete',
-    },
-    {
-      module: PermissionModule.APPLICATION_USER_LIST,
-      permission: 'delete',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.APPLICATION_USER, permission: 'delete' },
+    { module: PermissionModule.APPLICATION_USER_LIST, permission: 'delete' },
+  )
   @LogActivity({
-    action: ActivityAction.DELETE,
+    action: LogAction.DELETE,
     description: 'User deleted successfully',
     resourceType: 'user',
     getResourceId: (params: { id: string }) => params.id,

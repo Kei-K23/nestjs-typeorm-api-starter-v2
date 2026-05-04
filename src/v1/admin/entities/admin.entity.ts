@@ -2,17 +2,17 @@ import { Exclude } from 'class-transformer';
 import {
   Entity,
   Column,
-  BeforeUpdate,
-  BeforeInsert,
   Index,
   ManyToOne,
   OneToMany,
   JoinColumn,
+  BeforeInsert,
+  BeforeUpdate,
 } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
 import { Role } from 'src/v1/auth/entities/role.entity';
 import { RefreshToken } from 'src/v1/auth/entities/refresh-token.entity';
 import { BaseEntity } from 'src/common/entities/base.entity';
+import { hashPasswordIfNeeded } from 'src/common/utils/password-hash.util';
 
 @Entity('admins')
 export class Admin extends BaseEntity {
@@ -24,8 +24,7 @@ export class Admin extends BaseEntity {
   @Exclude()
   password: string;
 
-  @Index()
-  @Column()
+  @Column({ unique: true })
   email: string;
 
   @Column({ nullable: true })
@@ -54,12 +53,6 @@ export class Admin extends BaseEntity {
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword() {
-    if (
-      this.password &&
-      !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(this.password)
-    ) {
-      const rounds = Number(process.env.AUTH_PASSWORD_SALT_ROUNDS ?? 10);
-      this.password = await bcrypt.hash(this.password, rounds);
-    }
+    this.password = await hashPasswordIfNeeded(this.password);
   }
 }

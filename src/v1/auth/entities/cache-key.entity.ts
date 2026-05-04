@@ -1,43 +1,30 @@
-import { randomUUID } from 'crypto';
-import {
-  Entity,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-  BeforeInsert,
-  PrimaryColumn,
-  Relation,
-} from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Relation } from 'typeorm';
 import { User } from 'src/v1/user/entities/user.entity';
 import { Admin } from 'src/v1/admin/entities/admin.entity';
+import { AuditEntity } from 'src/common/entities/audit.entity';
 
 export enum CacheKeyStatus {
-  PENDING = 'pending',
-  VERIFIED = 'verified',
-  EXPIRED = 'expired',
-  USED = 'used',
+  PENDING = 'PENDING',
+  VERIFIED = 'VERIFIED',
+  EXPIRED = 'EXPIRED',
+  USED = 'USED',
 }
 
 export enum CacheKeyService {
-  TWO_FACTOR = 'two_factor',
-  RESET_PASSWORD = 'reset_password',
+  TWO_FACTOR = 'TWO_FACTOR',
+  RESET_PASSWORD = 'RESET_PASSWORD',
 }
 
 @Entity('cache_keys')
-export class CacheKey {
-  @PrimaryColumn('uuid')
-  id: string;
-
-  @Column({ nullable: true })
+export class CacheKey extends AuditEntity {
+  @Column({ type: 'uuid', nullable: true })
   userId: string | null;
 
   @ManyToOne(() => User, (user) => user.cacheKeys)
   @JoinColumn({ name: 'userId' })
   user: Relation<User>;
 
-  @Column({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   adminId: string | null;
 
   @ManyToOne(() => Admin, { onDelete: 'CASCADE' })
@@ -71,17 +58,4 @@ export class CacheKey {
 
   @Column({ default: 3 })
   maxAttempts: number;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  @BeforeInsert()
-  generateUUID() {
-    if (!this.id) {
-      this.id = randomUUID();
-    }
-  }
 }

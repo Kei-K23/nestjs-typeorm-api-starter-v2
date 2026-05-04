@@ -19,10 +19,11 @@ import {
 import { Admin } from 'src/v1/admin/entities/admin.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { AuthenticatedUser, JwtPayload } from '../interfaces/user.interface';
-import {
-  ActivityAction,
-  UserActivityLog,
-} from 'src/v1/activity-log/entities/user-activity-log.entity';
+import { ActivityLogService } from 'src/v1/activity-log/services/activity-log.service';
+import { AuditLogService } from 'src/v1/activity-log/services/audit-log.service';
+import { LogAction } from 'src/v1/activity-log/constants/log-action.enum';
+import { CreateActivityLogData } from 'src/v1/activity-log/interfaces/create-activity-log.interface';
+import { CreateAuditLogData } from 'src/v1/activity-log/interfaces/create-audit-log.interface';
 import { Request } from 'express';
 import { parseUserAgent } from 'src/common/utils/user-agent.util';
 import { TwoFactorService } from './two-factor.service';
@@ -62,18 +63,84 @@ export class AuthService {
     private adminRepository: Repository<Admin>,
     @InjectRepository(RefreshToken)
     private refreshTokenRepository: Repository<RefreshToken>,
-    @InjectRepository(UserActivityLog)
-    private userActivityLogRepository: Repository<UserActivityLog>,
     @InjectRepository(CacheKey)
     private cacheKeyRepository: Repository<CacheKey>,
     private jwtService: JwtService,
     private configService: ConfigService,
     private twoFactorService: TwoFactorService,
+    private activityLogService: ActivityLogService,
+    private auditLogService: AuditLogService,
     private s3ClientUtils: S3ClientUtils,
     private emailServiceUtils: EmailServiceUtils,
     private smsPhoServiceUtils: SMSPhoServiceUtils,
     private fileUploadService: FileUploadService,
   ) {}
+
+  private getClientIp(request: Request): string {
+    const forwarded = request.headers['x-forwarded-for'] as string;
+    return (
+      forwarded?.split(',')[0]?.trim() ||
+      (request.headers['x-real-ip'] as string) ||
+      request.socket?.remoteAddress ||
+      request.ip ||
+      'unknown'
+    );
+  }
+
+  private buildRequestContext(
+    request: Request,
+  ): Pick<
+    CreateActivityLogData,
+    'ipAddress' | 'userAgent' | 'device' | 'browser' | 'os' | 'location'
+  > {
+    const { device, browser, os } = parseUserAgent(request);
+    return {
+      ipAddress: this.getClientIp(request),
+      userAgent: (request.headers['user-agent'] as string) || '',
+      device,
+      browser,
+      os,
+      location: (request.headers['cf-ipcountry'] as string) || undefined,
+    };
+  }
+
+  private async logUserActivity(
+    request: Request,
+    userId: string,
+    action: LogAction,
+    description: string,
+    extra?: Partial<CreateActivityLogData>,
+  ): Promise<void> {
+    await this.activityLogService
+      .create({
+        userId,
+        action,
+        description,
+        ...this.buildRequestContext(request),
+        ...extra,
+      })
+      .catch((err) => this.logger.error('Failed to write activity log:', err));
+  }
+
+  private async logAdminAudit(
+    request: Request,
+    adminId: string,
+    action: LogAction,
+    description: string,
+    extra?: Partial<CreateAuditLogData>,
+  ): Promise<void> {
+    await this.auditLogService
+      .create({
+        adminId,
+        action,
+        description,
+        entityName: extra?.entityName ?? 'admin',
+        entityId: extra?.entityId ?? adminId,
+        ...this.buildRequestContext(request),
+        ...extra,
+      })
+      .catch((err) => this.logger.error('Failed to write audit log:', err));
+  }
 
   async validateAdmin(email: string, plainPassword: string) {
     const admin = await this.adminRepository.findOne({
@@ -92,8 +159,7 @@ export class AuthService {
     if (!(await bcrypt.compare(plainPassword, admin.password))) {
       throw new UnauthorizedException('Invalid password');
     }
-    const { password, ...result } = admin;
-    void password;
+    const { password: _, ...result } = admin;
     return result;
   }
 
@@ -127,21 +193,13 @@ export class AuthService {
     await this.revokeAllUserTokens(user.id, false);
     const refreshToken = await this.generateRefreshToken(user.id, 'user');
 
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      userId: user.id,
-      isActivityLog: true,
-      action: ActivityAction.LOGIN,
-      description: 'User logged in successfully',
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-      location: request?.headers['cf-ipcountry'] as string,
-    });
     this.logger.log(`User with ID '${user.id}' logged in successfully`);
-    await this.userActivityLogRepository.save(userActivityLog);
+    await this.logUserActivity(
+      request,
+      user.id,
+      LogAction.LOGIN,
+      'User logged in successfully',
+    );
 
     return {
       accessToken,
@@ -274,21 +332,12 @@ export class AuthService {
 
     await this.userRepository.save(user);
 
-    // Log activity
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      userId: user.id,
-      action: ActivityAction.LOGIN,
-      description: 'User logged in via Apple successfully',
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-      location: request?.headers['cf-ipcountry'] as string,
-    });
-    await this.userActivityLogRepository.save(userActivityLog);
-
+    await this.logUserActivity(
+      request,
+      user.id,
+      LogAction.LOGIN,
+      'User logged in via Apple successfully',
+    );
     return this.completeUserLogin(user, request);
   }
 
@@ -497,6 +546,12 @@ export class AuthService {
       await this.s3ClientUtils.deleteObject(existingProfileImageUrl);
     }
 
+    await this.logUserActivity(
+      request as Request,
+      user.id,
+      LogAction.REGISTER,
+      'User registration completed',
+    );
     const loginData = await this.completeUserLogin(user, request as Request);
 
     return {
@@ -595,23 +650,20 @@ export class AuthService {
 
     const refreshToken = await this.generateRefreshToken(admin.id, 'admin');
 
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      adminId: admin.id,
-      isActivityLog: true,
-      action: ActivityAction.LOGIN,
-      description: `Admin logged in successfully`,
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-    });
-    await this.userActivityLogRepository.save(userActivityLog);
+    const previousLastLoginAt = admin.lastLoginAt;
+    const lastLoginAt = new Date();
 
-    await this.adminRepository.update(admin.id, {
-      lastLoginAt: new Date().toISOString(),
-    });
+    await this.adminRepository.update(admin.id, { lastLoginAt });
+    await this.logAdminAudit(
+      request,
+      admin.id,
+      LogAction.LOGIN,
+      'Admin logged in successfully',
+      {
+        oldValue: { lastLoginAt: previousLastLoginAt },
+        newValue: { lastLoginAt },
+      },
+    );
 
     return {
       accessToken,
@@ -772,10 +824,7 @@ export class AuthService {
       },
     );
 
-    const tokenHash = crypto
-      .createHash('sha256')
-      .update(token)
-      .digest('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
@@ -853,22 +902,14 @@ export class AuthService {
         await this.s3ClientUtils.deleteObject(admin.profileImageUrl);
       }
 
-      const { device, browser, os } = parseUserAgent(request);
-      const userActivityLog = this.userActivityLogRepository.create({
-        adminId: admin.id,
-        action: ActivityAction.UPDATE,
-        description: 'Admin profile updated successfully',
-        ipAddress: request?.ip,
-        userAgent: request?.headers['user-agent'],
-        device,
-        browser,
-        os,
-        location: request?.headers['cf-ipcountry'] as string,
-      });
-      await this.userActivityLogRepository.save(userActivityLog);
+      await this.logAdminAudit(
+        request,
+        admin.id,
+        LogAction.UPDATE_PROFILE,
+        'Admin profile updated successfully',
+      );
 
-      const { password, ...result } = savedAdmin;
-      void password;
+      const { password: _, ...result } = savedAdmin;
 
       this.logger.log(
         `Admin with ID '${admin.id}' profile updated successfully`,
@@ -929,22 +970,14 @@ export class AuthService {
       await this.s3ClientUtils.deleteObject(user.profileImageUrl);
     }
 
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      userId: user.id,
-      action: ActivityAction.UPDATE,
-      description: 'User profile updated successfully',
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-      location: request?.headers['cf-ipcountry'] as string,
-    });
-    await this.userActivityLogRepository.save(userActivityLog);
+    await this.logUserActivity(
+      request,
+      user.id,
+      LogAction.UPDATE_PROFILE,
+      'User profile updated successfully',
+    );
 
-    const { password, ...result } = savedUser;
-    void password;
+    const { password: _, ...result } = savedUser;
 
     this.logger.log(`User with ID '${user.id}' profile updated successfully`);
     return result;
@@ -983,23 +1016,15 @@ export class AuthService {
 
       await this.revokeAllAdminTokens(userId);
 
-      const { device, browser, os } = parseUserAgent(request);
-      const userActivityLog = this.userActivityLogRepository.create({
-        adminId: admin.id,
-        action: ActivityAction.UPDATE,
-        description: 'Admin password changed successfully',
-        ipAddress: request?.ip,
-        userAgent: request?.headers['user-agent'],
-        device,
-        browser,
-        os,
-        location: request?.headers['cf-ipcountry'] as string,
-      });
-
       this.logger.log(
         `Admin with ID '${admin.id}' password changed successfully`,
       );
-      await this.userActivityLogRepository.save(userActivityLog);
+      await this.logAdminAudit(
+        request,
+        admin.id,
+        LogAction.CHANGE_PASSWORD,
+        'Admin password changed successfully',
+      );
 
       return;
     }
@@ -1030,21 +1055,13 @@ export class AuthService {
 
     await this.revokeAllUserTokens(userId);
 
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      userId: user.id,
-      action: ActivityAction.UPDATE,
-      description: 'User password changed successfully',
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-      location: request?.headers['cf-ipcountry'] as string,
-    });
-
     this.logger.log(`User with ID '${user.id}' password changed successfully`);
-    await this.userActivityLogRepository.save(userActivityLog);
+    await this.logUserActivity(
+      request,
+      user.id,
+      LogAction.CHANGE_PASSWORD,
+      'User password changed successfully',
+    );
   }
 
   async deleteProfile(userId: string, request: Request): Promise<void> {
@@ -1058,20 +1075,13 @@ export class AuthService {
       throw new NotFoundException(`User with ID '${userId}' not found`);
     }
 
-    // Log activity before deletion
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      userId: user.id,
-      action: ActivityAction.DELETE,
-      description: 'User account deleted successfully',
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-      location: request?.headers['cf-ipcountry'] as string,
-    });
-    await this.userActivityLogRepository.save(userActivityLog);
+    // Log before deletion so userId FK still exists
+    await this.logUserActivity(
+      request,
+      user.id,
+      LogAction.DELETE_ACCOUNT,
+      'User account deleted successfully',
+    );
 
     // Revoke all refresh tokens
     await this.revokeAllUserTokens(userId);
@@ -1108,19 +1118,12 @@ export class AuthService {
         throw new NotFoundException(`Admin with email '${email}' not found`);
       }
 
-      const { device, browser, os } = parseUserAgent(request);
-      const adminActivityLog = this.userActivityLogRepository.create({
-        adminId: admin.id,
-        action: ActivityAction.FORGOT_PASSWORD_SEND_OTP,
-        description: 'Forgot password request sent',
-        ipAddress: request?.ip,
-        userAgent: request?.headers['user-agent'],
-        device,
-        browser,
-        os,
-        location: request?.headers['cf-ipcountry'] as string,
-      });
-      await this.userActivityLogRepository.save(adminActivityLog);
+      await this.logAdminAudit(
+        request,
+        admin.id,
+        LogAction.FORGOT_PASSWORD_OTP,
+        'Forgot password OTP sent',
+      );
 
       const code = this.generateVerificationCode();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -1162,19 +1165,12 @@ export class AuthService {
       throw new NotFoundException(`User with email '${email}' not found`);
     }
 
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      userId: user.id,
-      action: ActivityAction.FORGOT_PASSWORD_SEND_OTP,
-      description: 'Forgot password request sent',
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-      location: request?.headers['cf-ipcountry'] as string,
-    });
-    await this.userActivityLogRepository.save(userActivityLog);
+    await this.logUserActivity(
+      request,
+      user.id,
+      LogAction.FORGOT_PASSWORD_OTP,
+      'Forgot password OTP sent',
+    );
 
     const code = this.generateVerificationCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -1338,22 +1334,15 @@ export class AuthService {
       admin.password = resetPasswordDto.newPassword;
       await this.adminRepository.save(admin);
 
-      const { device, browser, os } = parseUserAgent(request);
-      const adminActivityLog = this.userActivityLogRepository.create({
-        adminId: admin.id,
-        action: ActivityAction.CHANGE_PASSWORD,
-        description: 'Admin password changed successfully',
-        ipAddress: request?.ip,
-        userAgent: request?.headers['user-agent'],
-        device,
-        browser,
-        os,
-        location: request?.headers['cf-ipcountry'] as string,
-      });
       this.logger.log(
         `Admin with ID '${admin.id}' changed password successfully`,
       );
-      await this.userActivityLogRepository.save(adminActivityLog);
+      await this.logAdminAudit(
+        request,
+        admin.id,
+        LogAction.RESET_PASSWORD,
+        'Admin password reset successfully',
+      );
 
       return;
     }
@@ -1368,20 +1357,13 @@ export class AuthService {
     user.password = resetPasswordDto.newPassword;
     await this.userRepository.save(user);
 
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      userId: user.id,
-      action: ActivityAction.CHANGE_PASSWORD,
-      description: 'User password changed successfully',
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-      location: request?.headers['cf-ipcountry'] as string,
-    });
     this.logger.log(`User with ID '${user.id}' changed password successfully`);
-    await this.userActivityLogRepository.save(userActivityLog);
+    await this.logUserActivity(
+      request,
+      user.id,
+      LogAction.RESET_PASSWORD,
+      'User password reset successfully',
+    );
   }
 
   async userPasswordResetOTPSend(
@@ -1399,19 +1381,12 @@ export class AuthService {
       throw new NotFoundException(`User with phone '${phone}' not found`);
     }
 
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      userId: user.id,
-      action: ActivityAction.FORGOT_PASSWORD_SEND_OTP,
-      description: 'Forgot password request sent',
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-      location: request?.headers['cf-ipcountry'] as string,
-    });
-    await this.userActivityLogRepository.save(userActivityLog);
+    await this.logUserActivity(
+      request,
+      user.id,
+      LogAction.FORGOT_PASSWORD_OTP,
+      'Forgot password OTP sent',
+    );
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     const message =
@@ -1575,20 +1550,13 @@ export class AuthService {
 
     await this.revokeAllUserTokens(userId);
 
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      userId: user.id,
-      action: ActivityAction.CHANGE_PASSWORD,
-      description: 'User password changed successfully',
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-      location: request?.headers['cf-ipcountry'] as string,
-    });
     this.logger.log(`User with ID '${user.id}' changed password successfully`);
-    await this.userActivityLogRepository.save(userActivityLog);
+    await this.logUserActivity(
+      request,
+      user.id,
+      LogAction.RESET_PASSWORD,
+      'User password reset successfully',
+    );
   }
 
   async userGoogleLogin(
@@ -1670,21 +1638,12 @@ export class AuthService {
     }
     await this.userRepository.save(user);
 
-    // Log activity
-    const { device, browser, os } = parseUserAgent(request);
-    const userActivityLog = this.userActivityLogRepository.create({
-      userId: user.id,
-      action: ActivityAction.LOGIN,
-      description: 'User logged in via Google successfully',
-      ipAddress: request?.ip,
-      userAgent: request?.headers['user-agent'],
-      device,
-      browser,
-      os,
-      location: request?.headers['cf-ipcountry'] as string,
-    });
-    await this.userActivityLogRepository.save(userActivityLog);
-
+    await this.logUserActivity(
+      request,
+      user.id,
+      LogAction.LOGIN,
+      'User logged in via Google successfully',
+    );
     return this.completeUserLogin(user, request);
   }
 

@@ -8,11 +8,7 @@ export interface PermissionRequirement {
   permission: 'create' | 'read' | 'update' | 'delete';
 }
 
-export const RequirePermissions = (
-  ...permissions: (PermissionRequirement | PermissionRequirement[])[]
-) => {
-  const flatPermissions: PermissionRequirement[] = permissions.flatMap(
-    (permission) => (Array.isArray(permission) ? permission : [permission]),
-  );
-  return SetMetadata(PERMISSIONS_KEY, flatPermissions);
-};
+// Access is granted if the admin's role satisfies ANY of the listed permissions (OR semantics).
+// See PermissionsGuard for enforcement logic.
+export const RequirePermissions = (...permissions: PermissionRequirement[]) =>
+  SetMetadata(PERMISSIONS_KEY, permissions);

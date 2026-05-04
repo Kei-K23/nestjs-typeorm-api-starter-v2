@@ -16,6 +16,8 @@ import {
 } from '../entities/cache-key.entity';
 import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
+import { AuditLogService } from 'src/v1/activity-log/services/audit-log.service';
+import { LogAction } from 'src/v1/activity-log/constants/log-action.enum';
 
 @Injectable()
 export class TwoFactorService {
@@ -28,6 +30,7 @@ export class TwoFactorService {
     private adminRepository: Repository<Admin>,
     private notificationService: NotificationService,
     private configService: ConfigService,
+    private auditLogService: AuditLogService,
   ) {}
 
   async enableTwoFactor(userId: string, email: string): Promise<void> {
@@ -64,6 +67,10 @@ export class TwoFactorService {
       fromUsername: this.configService.get<string>('EMAIL_FROM_NAME', ''),
       expiresIn: 10,
     });
+
+    await this.auditLogService
+      .create({ adminId: userId, action: LogAction.ENABLE_TWO_FACTOR, description: '2FA setup initiated, verification code sent' })
+      .catch((err) => this.logger.error('Failed to write audit log:', err));
 
     this.logger.log(`2FA verification code queued for user ${userId}`);
   }
@@ -114,6 +121,10 @@ export class TwoFactorService {
     // Update user's 2FA status
     await this.adminRepository.update(userId, { twoFactorEnabled: true });
 
+    await this.auditLogService
+      .create({ adminId: userId, action: LogAction.VERIFY_TWO_FACTOR, description: '2FA enabled successfully' })
+      .catch((err) => this.logger.error('Failed to write audit log:', err));
+
     this.logger.log(`2FA enabled for user ${userId}`);
     return true;
   }
@@ -144,6 +155,10 @@ export class TwoFactorService {
 
     // Update user's 2FA status
     await this.adminRepository.update(userId, { twoFactorEnabled: false });
+
+    await this.auditLogService
+      .create({ adminId: userId, action: LogAction.DISABLE_TWO_FACTOR, description: '2FA disabled successfully' })
+      .catch((err) => this.logger.error('Failed to write audit log:', err));
 
     this.logger.log(`2FA disabled for user ${userId}`);
   }

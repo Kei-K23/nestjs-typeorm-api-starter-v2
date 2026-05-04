@@ -18,7 +18,7 @@ import { CurrentUser } from '../decorators/current-user.decorator';
 import { AuthenticatedUser } from '../interfaces/user.interface';
 import { Request } from 'express';
 import { LogActivity } from 'src/v1/activity-log/decorators/log-activity.decorator';
-import { ActivityAction } from 'src/v1/activity-log/entities/user-activity-log.entity';
+import { LogAction } from 'src/v1/activity-log/constants/log-action.enum';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
@@ -126,7 +126,9 @@ export class AuthController {
   }
 
   @Post('user-register-account-setup')
-  @UseInterceptors(FileInterceptor('profileImage', profileImageInterceptorOptions))
+  @UseInterceptors(
+    FileInterceptor('profileImage', profileImageInterceptorOptions),
+  )
   @HttpCode(200)
   async userRegisterAccountSetup(
     @UploadedFile() file: Express.Multer.File,
@@ -157,7 +159,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(200)
   @LogActivity({
-    action: ActivityAction.LOGOUT,
+    action: LogAction.LOGOUT,
     description: 'User logged out successfully',
     resourceType: 'user',
     getResourceId: (result: AuthenticatedUser) => result.id?.toString(),
@@ -173,13 +175,15 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ResolvePresignedUrls('profileImageUrl')
-  async getProfile(@CurrentUser() user: AuthenticatedUser) {
+  getProfile(@CurrentUser() user: AuthenticatedUser) {
     return ResponseUtil.success(user, 'Profile retrieved successfully');
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
-  @UseInterceptors(FileInterceptor('profileImage', profileImageInterceptorOptions))
+  @UseInterceptors(
+    FileInterceptor('profileImage', profileImageInterceptorOptions),
+  )
   @HttpCode(200)
   async updateProfile(
     @CurrentUser() user: AuthenticatedUser,
@@ -260,7 +264,7 @@ export class AuthController {
   @Post('enable-2fa')
   @HttpCode(200)
   @LogActivity({
-    action: ActivityAction.UPDATE,
+    action: LogAction.ENABLE_TWO_FACTOR,
     description: 'Two-factor authentication enabled',
     resourceType: 'user',
     getResourceId: (result: AuthenticatedUser) => result.id?.toString(),
@@ -283,7 +287,7 @@ export class AuthController {
   @Post('disable-2fa')
   @HttpCode(200)
   @LogActivity({
-    action: ActivityAction.UPDATE,
+    action: LogAction.DISABLE_TWO_FACTOR,
     description: 'Two-factor authentication disabled',
     resourceType: 'user',
     getResourceId: (result: AuthenticatedUser) => result.id?.toString(),

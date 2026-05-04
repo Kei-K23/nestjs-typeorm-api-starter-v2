@@ -1,22 +1,10 @@
-import { randomUUID } from 'crypto';
+import { Entity, Column, ManyToOne, JoinColumn, Relation } from 'typeorm';
 import { User } from 'src/v1/user/entities/user.entity';
 import { Admin } from 'src/v1/admin/entities/admin.entity';
-import {
-  Entity,
-  Column,
-  ManyToOne,
-  JoinColumn,
-  CreateDateColumn,
-  PrimaryColumn,
-  BeforeInsert,
-  Relation,
-} from 'typeorm';
+import { AuditEntity } from 'src/common/entities/audit.entity';
 
 @Entity('refresh_tokens')
-export class RefreshToken {
-  @PrimaryColumn('uuid')
-  id: string;
-
+export class RefreshToken extends AuditEntity {
   @Column()
   token: string;
 
@@ -43,14 +31,4 @@ export class RefreshToken {
 
   @Column({ default: false })
   isRevoked: boolean;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @BeforeInsert()
-  generateUUID() {
-    if (!this.id) {
-      this.id = randomUUID();
-    }
-  }
 }

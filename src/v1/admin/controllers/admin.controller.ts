@@ -19,7 +19,7 @@ import { PermissionsGuard } from 'src/v1/auth/guards/permissions.guard';
 import { RequirePermissions } from 'src/v1/auth/decorators/permissions.decorator';
 import { PermissionModule } from 'src/v1/auth/entities/permission.entity';
 import { LogActivity } from 'src/v1/activity-log/decorators/log-activity.decorator';
-import { ActivityAction } from 'src/v1/activity-log/entities/user-activity-log.entity';
+import { LogAction } from 'src/v1/activity-log/constants/log-action.enum';
 import { ResponseUtil } from 'src/common/utils/response.util';
 import { AdminService } from '../services/admin.service';
 import { Admin } from '../entities/admin.entity';
@@ -36,18 +36,12 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post()
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'create',
-    },
-    {
-      module: PermissionModule.ADMIN_LIST,
-      permission: 'create',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'create' },
+    { module: PermissionModule.ADMIN_LIST, permission: 'create' },
+  )
   @LogActivity({
-    action: ActivityAction.CREATE,
+    action: LogAction.CREATE,
     description: 'Admin created successfully',
     resourceType: 'admin',
     getResourceId: (result: Admin) => result.id?.toString(),
@@ -63,16 +57,10 @@ export class AdminController {
 
   @Get()
   @ResolvePresignedUrls('profileImageUrl')
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'read',
-    },
-    {
-      module: PermissionModule.ADMIN_LIST,
-      permission: 'read',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'read' },
+    { module: PermissionModule.ADMIN_LIST, permission: 'read' },
+  )
   async findAll(@Query() filters: FilterAdminDto) {
     const result = await this.adminService.findAll(filters);
 
@@ -94,16 +82,10 @@ export class AdminController {
 
   @Get('/:id')
   @ResolvePresignedUrls('profileImageUrl')
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'read',
-    },
-    {
-      module: PermissionModule.ADMIN_LIST,
-      permission: 'read',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'read' },
+    { module: PermissionModule.ADMIN_LIST, permission: 'read' },
+  )
   async findOne(@Param('id') id: string) {
     const admin = await this.adminService.findOne(id);
     return ResponseUtil.success(
@@ -113,18 +95,12 @@ export class AdminController {
   }
 
   @Patch('/:id')
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'update',
-    },
-    {
-      module: PermissionModule.ADMIN_LIST,
-      permission: 'update',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'update' },
+    { module: PermissionModule.ADMIN_LIST, permission: 'update' },
+  )
   @LogActivity({
-    action: ActivityAction.UPDATE,
+    action: LogAction.UPDATE,
     description: 'Admin updated successfully',
     resourceType: 'admin',
     getResourceId: (result: Admin) => result.id?.toString(),
@@ -140,18 +116,12 @@ export class AdminController {
   }
 
   @Delete('/:id')
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'delete',
-    },
-    {
-      module: PermissionModule.ADMIN_LIST,
-      permission: 'delete',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'delete' },
+    { module: PermissionModule.ADMIN_LIST, permission: 'delete' },
+  )
   @LogActivity({
-    action: ActivityAction.DELETE,
+    action: LogAction.DELETE,
     description: 'Admin deleted successfully',
     resourceType: 'admin',
     getResourceId: (params: { id: string }) => params.id,

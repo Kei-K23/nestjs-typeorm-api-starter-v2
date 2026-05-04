@@ -12,6 +12,7 @@ import { FilterUserDto } from '../dto/filter-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
 import { FileUploadService } from 'src/common/services/file-upload.service';
+import { attachAuditLogMetadata } from 'src/v1/activity-log/utils/audit-log-metadata.util';
 
 @Injectable()
 export class UserService {
@@ -168,6 +169,12 @@ export class UserService {
 
     const savedUser = await this.userRepository.save(updatedUser);
 
+    const auditValues = this.getChangedAuditValues(existingUser, savedUser, [
+      ...Object.keys(updateUserDto),
+      ...(file ? ['profileImageUrl'] : []),
+    ]);
+    attachAuditLogMetadata(savedUser, auditValues);
+
     const imageChanged =
       newProfileImageUrl !== (existingUser.profileImageUrl || '');
 
@@ -177,6 +184,33 @@ export class UserService {
     this.logger.log(`User updated with ID: ${savedUser.id}`);
 
     return savedUser;
+  }
+
+  private getChangedAuditValues(
+    oldUser: User,
+    newUser: User,
+    fields: string[],
+  ): {
+    oldValue: Record<string, unknown>;
+    newValue: Record<string, unknown>;
+  } {
+    const oldValue: Record<string, unknown> = {};
+    const newValue: Record<string, unknown> = {};
+    const auditableFields = [...new Set(fields)].filter(
+      (field) => field !== 'password',
+    );
+
+    for (const field of auditableFields) {
+      const oldFieldValue = oldUser[field as keyof User] as unknown;
+      const newFieldValue = newUser[field as keyof User] as unknown;
+
+      if (oldFieldValue !== newFieldValue) {
+        oldValue[field] = oldFieldValue;
+        newValue[field] = newFieldValue;
+      }
+    }
+
+    return { oldValue, newValue };
   }
 
   async remove(id: string) {

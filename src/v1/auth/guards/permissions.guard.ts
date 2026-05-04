@@ -34,8 +34,7 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Access denied: No permissions');
     }
 
-    const hasPermission = requiredPermissions.every((requiredPermission) => {
-      // Handle new object format
+    const hasPermission = requiredPermissions.some((requiredPermission) => {
       return this.checkObjectPermission(requiredPermission, user);
     });
 

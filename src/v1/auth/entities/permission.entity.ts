@@ -43,7 +43,7 @@ export class Permission extends BaseEntity {
   @JoinColumn({ name: 'moduleId' })
   module: ModuleEntity;
 
-  @Column({ name: 'action', type: 'varchar' })
+  @Column({ type: 'varchar' })
   action: ActionType;
 
   @OneToMany(

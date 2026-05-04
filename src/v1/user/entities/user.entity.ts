@@ -4,26 +4,26 @@ import {
   Entity,
   Column,
   OneToMany,
-  BeforeUpdate,
-  BeforeInsert,
   Index,
+  BeforeInsert,
+  BeforeUpdate,
 } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
 import { CacheKey } from 'src/v1/auth/entities/cache-key.entity';
 import { BaseEntity } from 'src/common/entities/base.entity';
+import { hashPasswordIfNeeded } from 'src/common/utils/password-hash.util';
 
 export const LoginProvider = {
-  SMS: 'sms',
-  GOOGLE: 'google',
-  APPLE: 'apple',
+  SMS: 'SMS',
+  GOOGLE: 'GOOGLE',
+  APPLE: 'APPLE',
 } as const;
 
 export type LoginProvider = (typeof LoginProvider)[keyof typeof LoginProvider];
 
 export const UserRegistrationStage = {
-  OTP_VERIFY: 'otpVerify',
-  PASSWORD_SETUP: 'passwordSetup',
-  ACCOUNT_SETUP: 'accountSetup',
+  OTP_VERIFY: 'OTP_VERIFY',
+  PASSWORD_SETUP: 'PASSWORD_SETUP',
+  ACCOUNT_SETUP: 'ACCOUNT_SETUP',
 } as const;
 
 export type UserRegistrationStage =
@@ -47,7 +47,7 @@ export class User extends BaseEntity {
   password: string;
 
   @Index()
-  @Column({ default: false, nullable: true })
+  @Column({ default: false })
   isBanned: boolean;
 
   @Column({ nullable: true })
@@ -70,11 +70,14 @@ export class User extends BaseEntity {
   })
   registrationStage: UserRegistrationStage;
 
-  @Column({ nullable: true, default: '' })
-  fcmToken: string;
+  @Column({ type: 'varchar', nullable: true })
+  fcmToken: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastLogoutAt: Date;
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshTokens: RefreshToken[];
@@ -94,12 +97,6 @@ export class User extends BaseEntity {
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword() {
-    if (
-      this.password &&
-      !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(this.password)
-    ) {
-      const rounds = Number(process.env.AUTH_PASSWORD_SALT_ROUNDS ?? 10);
-      this.password = await bcrypt.hash(this.password, rounds);
-    }
+    this.password = await hashPasswordIfNeeded(this.password);
   }
 }

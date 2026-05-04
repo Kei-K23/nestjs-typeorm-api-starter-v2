@@ -8,20 +8,21 @@ import {
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { ActivityLogService } from '../services/activity-log.service';
-import { ActivityAction } from '../entities/user-activity-log.entity';
+import { AuditLogService } from '../services/audit-log.service';
+import { LogAction } from '../constants/log-action.enum';
 import { Reflector } from '@nestjs/core';
 import { RequestWithUser } from 'src/v1/auth/interfaces/user.interface';
 import { Request } from 'express';
 import { parseUserAgent } from 'src/common/utils/user-agent.util';
-import { CreateActivityLogData } from '../interfaces/create-activity-log.interface';
+import { consumeAuditLogMetadata } from '../utils/audit-log-metadata.util';
 
 export const LOG_ACTIVITY_KEY = 'logActivity';
 
 export interface ActivityLogOptions {
-  action: ActivityAction;
+  action: LogAction;
   description: string;
   resourceType?: string;
-  getResourceId?: (result: unknown, req: Request) => string;
+  getResourceId?: (result: unknown, req: Request) => string | undefined;
 }
 
 @Injectable()
@@ -30,6 +31,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
 
   constructor(
     private readonly activityLogService: ActivityLogService,
+    private readonly auditLogService: AuditLogService,
     private readonly reflector: Reflector,
   ) {}
 
@@ -52,11 +54,11 @@ export class ActivityLogInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap((result) => {
-        this.logActivity(result, request as unknown as Request, logOptions).catch(
-          (error) => {
-            this.logger.error('Failed to log activity:', error);
-          },
-        );
+        this.logActivity(
+          result,
+          request as unknown as Request,
+          logOptions,
+        ).catch((error) => this.logger.error('Failed to log activity:', error));
       }),
     );
   }
@@ -68,16 +70,20 @@ export class ActivityLogInterceptor implements NestInterceptor {
   ): Promise<void> {
     try {
       const requestWithUser = request as unknown as RequestWithUser;
-      const { device, browser, os } = parseUserAgent(request);
       const subject = requestWithUser.user;
+      const { device, browser, os } = parseUserAgent(request);
 
-      const resourceId = logOptions.getResourceId
-        ? logOptions.getResourceId(result, request)
-        : (request.params?.id ?? undefined);
+      const responseData = this.getResponseData(result);
+      const resourceId =
+        (logOptions.getResourceId
+          ? (logOptions.getResourceId(responseData, request) ??
+            logOptions.getResourceId(result, request))
+          : undefined) ??
+        this.getResourceId(responseData) ??
+        request.params?.id;
+      const auditMetadata = consumeAuditLogMetadata(responseData);
 
-      const isActivityLog = subject.subjectType !== 'ADMIN';
-
-      const payload: CreateActivityLogData = {
+      const context = {
         action: logOptions.action,
         description: logOptions.description,
         resourceType: logOptions.resourceType,
@@ -87,7 +93,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
         device,
         browser,
         os,
-        isActivityLog,
+        location: (request.headers['cf-ipcountry'] as string) || undefined,
         metadata: {
           method: request.method,
           url: request.url,
@@ -99,18 +105,54 @@ export class ActivityLogInterceptor implements NestInterceptor {
       };
 
       if (subject.subjectType === 'ADMIN') {
-        payload.adminId = subject.id;
+        await this.auditLogService.create({
+          adminId: subject.id,
+          action: context.action,
+          description: context.description,
+          entityName: context.resourceType,
+          entityId: resourceId,
+          oldValue: this.sanitizeOptionalRecord(auditMetadata.oldValue),
+          newValue: this.sanitizeOptionalRecord(auditMetadata.newValue),
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+          device: context.device,
+          browser: context.browser,
+          os: context.os,
+          location: context.location,
+          metadata: context.metadata,
+        });
       } else {
-        payload.userId = subject.id;
+        await this.activityLogService.create({
+          userId: subject.id,
+          ...context,
+        });
       }
 
-      await this.activityLogService.create(payload);
       this.logger.log(
-        `Activity logged: ${logOptions.action} ${logOptions.description} for resource ${resourceId}`,
+        `${subject.subjectType} activity logged: ${logOptions.action} for resource ${resourceId}`,
       );
     } catch (error) {
       this.logger.error('Failed to log activity:', error);
     }
+  }
+
+  private getResponseData(result: unknown): unknown {
+    if (!result || typeof result !== 'object') return result;
+
+    if ('data' in result) {
+      return (result as { data?: unknown }).data;
+    }
+
+    return result;
+  }
+
+  private getResourceId(result: unknown): string | undefined {
+    if (!result || typeof result !== 'object') return undefined;
+
+    const id = (result as { id?: unknown }).id;
+    return typeof id === 'string' || typeof id === 'number'
+      ? id.toString()
+      : undefined;
   }
 
   private readonly SENSITIVE_KEYS = new Set([
@@ -126,9 +168,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
     'secret',
   ]);
 
-  private sanitizeBody(
-    body: Record<string, unknown>,
-  ): Record<string, unknown> {
+  private sanitizeBody(body: Record<string, unknown>): Record<string, unknown> {
     if (!body || typeof body !== 'object') return body;
     return Object.fromEntries(
       Object.entries(body).map(([key, value]) => [
@@ -142,9 +182,16 @@ export class ActivityLogInterceptor implements NestInterceptor {
     );
   }
 
+  private sanitizeOptionalRecord(
+    body?: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
+    return body ? this.sanitizeBody(body) : undefined;
+  }
+
   private getClientIp(request: Request): string {
+    const forwarded = request.headers['x-forwarded-for'] as string;
     return (
-      (request.headers['x-forwarded-for'] as string) ||
+      forwarded?.split(',')[0]?.trim() ||
       (request.headers['x-real-ip'] as string) ||
       request.socket?.remoteAddress ||
       request.ip ||

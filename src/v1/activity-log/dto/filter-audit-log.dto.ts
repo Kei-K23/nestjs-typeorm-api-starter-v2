@@ -9,10 +9,10 @@ import { LogAction } from '../constants/log-action.enum';
 import { LogStatus } from '../constants/log-status.enum';
 import { PaginationFilterDto } from 'src/common/dto/pagination-filter.dto';
 
-export class FilterActivityLogDto extends PaginationFilterDto {
+export class FilterAuditLogDto extends PaginationFilterDto {
   @IsOptional()
   @IsString()
-  userId?: string;
+  adminId?: string;
 
   @IsOptional()
   @IsEnum(LogAction)
@@ -20,11 +20,11 @@ export class FilterActivityLogDto extends PaginationFilterDto {
 
   @IsOptional()
   @IsString()
-  resourceType?: string;
+  entityName?: string;
 
   @IsOptional()
   @IsString()
-  resourceId?: string;
+  entityId?: string;
 
   @IsOptional()
   @IsString()

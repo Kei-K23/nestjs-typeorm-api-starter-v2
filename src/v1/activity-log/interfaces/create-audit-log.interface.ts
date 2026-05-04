@@ -1,12 +1,14 @@
 import { LogAction } from '../constants/log-action.enum';
 import { LogStatus } from '../constants/log-status.enum';
 
-export interface CreateActivityLogData {
-  userId: string;
+export interface CreateAuditLogData {
+  adminId?: string | null;
   action: LogAction;
   description: string;
-  resourceType?: string;
-  resourceId?: string;
+  entityName?: string;
+  entityId?: string;
+  oldValue?: Record<string, unknown>;
+  newValue?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
   device?: string;

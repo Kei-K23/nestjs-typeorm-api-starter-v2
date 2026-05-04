@@ -17,7 +17,7 @@ import { PermissionsGuard } from '../guards/permissions.guard';
 import { RequirePermissions } from '../decorators/permissions.decorator';
 import { PermissionModule } from '../entities/permission.entity';
 import { LogActivity } from 'src/v1/activity-log/decorators/log-activity.decorator';
-import { ActivityAction } from 'src/v1/activity-log/entities/user-activity-log.entity';
+import { LogAction } from 'src/v1/activity-log/constants/log-action.enum';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
 import { ApiResponse } from 'src/common/interfaces/api-response.interface';
@@ -30,16 +30,10 @@ export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
   @Get()
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'read',
-    },
-    {
-      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
-      permission: 'read',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'read' },
+    { module: PermissionModule.ADMIN_ROLE_PERMISSIONS, permission: 'read' },
+  )
   async findAll(
     @Query() filterDto: FilterRoleDto,
   ): Promise<ApiResponse<Role[]>> {
@@ -64,16 +58,10 @@ export class RoleController {
   }
 
   @Get('permissions')
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'read',
-    },
-    {
-      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
-      permission: 'read',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'read' },
+    { module: PermissionModule.ADMIN_ROLE_PERMISSIONS, permission: 'read' },
+  )
   async findAllPermissions() {
     const permissions = await this.roleService.findAllPermissions();
 
@@ -84,16 +72,10 @@ export class RoleController {
   }
 
   @Get(':id')
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'read',
-    },
-    {
-      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
-      permission: 'read',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'read' },
+    { module: PermissionModule.ADMIN_ROLE_PERMISSIONS, permission: 'read' },
+  )
   async findOne(@Param('id') id: string): Promise<ApiResponse<Role>> {
     const role = await this.roleService.findOne(id);
 
@@ -105,18 +87,12 @@ export class RoleController {
   }
 
   @Post()
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'create',
-    },
-    {
-      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
-      permission: 'create',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'create' },
+    { module: PermissionModule.ADMIN_ROLE_PERMISSIONS, permission: 'create' },
+  )
   @LogActivity({
-    action: ActivityAction.CREATE,
+    action: LogAction.CREATE,
     description: 'Role created successfully',
     resourceType: 'role',
     getResourceId: (result: Role) => result.id?.toString(),
@@ -133,18 +109,12 @@ export class RoleController {
   }
 
   @Patch(':id')
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'update',
-    },
-    {
-      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
-      permission: 'update',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'update' },
+    { module: PermissionModule.ADMIN_ROLE_PERMISSIONS, permission: 'update' },
+  )
   @LogActivity({
-    action: ActivityAction.UPDATE,
+    action: LogAction.UPDATE,
     description: 'Role updated successfully',
     resourceType: 'role',
     getResourceId: (result: Role) => result.id?.toString(),
@@ -163,18 +133,12 @@ export class RoleController {
   }
 
   @Delete(':id')
-  @RequirePermissions([
-    {
-      module: PermissionModule.ADMIN,
-      permission: 'delete',
-    },
-    {
-      module: PermissionModule.ADMIN_ROLE_PERMISSIONS,
-      permission: 'delete',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.ADMIN, permission: 'delete' },
+    { module: PermissionModule.ADMIN_ROLE_PERMISSIONS, permission: 'delete' },
+  )
   @LogActivity({
-    action: ActivityAction.DELETE,
+    action: LogAction.DELETE,
     description: 'Role deleted successfully',
     resourceType: 'role',
     getResourceId: (result: Role) => result.id?.toString(),

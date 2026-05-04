@@ -13,6 +13,7 @@ import { FilterAdminDto } from '../dto/filter-admin.dto';
 import { Role } from 'src/v1/auth/entities/role.entity';
 import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
 import { FileUploadService } from 'src/common/services/file-upload.service';
+import { attachAuditLogMetadata } from 'src/v1/activity-log/utils/audit-log-metadata.util';
 
 @Injectable()
 export class AdminService {
@@ -189,6 +190,12 @@ export class AdminService {
 
     const savedAdmin = await this.adminRepository.save(updatedAdmin);
 
+    const auditValues = this.getChangedAuditValues(existingAdmin, savedAdmin, [
+      ...Object.keys(updateAdminDto),
+      ...(file ? ['profileImageUrl'] : []),
+    ]);
+    attachAuditLogMetadata(savedAdmin, auditValues);
+
     const imageChanged =
       newProfileImageUrl !== (existingAdmin.profileImageUrl || '');
 
@@ -198,6 +205,33 @@ export class AdminService {
     this.logger.log(`Admin updated with ID: ${savedAdmin.id}`);
 
     return savedAdmin;
+  }
+
+  private getChangedAuditValues(
+    oldAdmin: Admin,
+    newAdmin: Admin,
+    fields: string[],
+  ): {
+    oldValue: Record<string, unknown>;
+    newValue: Record<string, unknown>;
+  } {
+    const oldValue: Record<string, unknown> = {};
+    const newValue: Record<string, unknown> = {};
+    const auditableFields = [...new Set(fields)].filter(
+      (field) => field !== 'password',
+    );
+
+    for (const field of auditableFields) {
+      const oldFieldValue = oldAdmin[field as keyof Admin] as unknown;
+      const newFieldValue = newAdmin[field as keyof Admin] as unknown;
+
+      if (oldFieldValue !== newFieldValue) {
+        oldValue[field] = oldFieldValue;
+        newValue[field] = newFieldValue;
+      }
+    }
+
+    return { oldValue, newValue };
   }
 
   async remove(id: string) {

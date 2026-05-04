@@ -24,8 +24,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       if (!admin) {
         throw new UnauthorizedException('Invalid token');
       }
-      const { password, ...adminWithoutPassword } = admin;
-      void password;
+      const { password: _, ...adminWithoutPassword } = admin;
       return {
         ...adminWithoutPassword,
         subjectType: 'ADMIN',
@@ -37,8 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       if (!user) {
         throw new UnauthorizedException('Invalid token');
       }
-      const { password, ...userWithoutPassword } = user;
-      void password;
+      const { password: _, ...userWithoutPassword } = user;
       return {
         ...userWithoutPassword,
         subjectType: 'USER',

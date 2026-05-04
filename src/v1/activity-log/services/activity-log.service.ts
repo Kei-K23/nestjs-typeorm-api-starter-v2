@@ -1,104 +1,84 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
-  Repository,
   Between,
   FindManyOptions,
   FindOptionsWhere,
-  IsNull,
+  Repository,
 } from 'typeorm';
-import { UserActivityLog } from '../entities/user-activity-log.entity';
+import { ActivityLog } from '../entities/activity-log.entity';
 import { FilterActivityLogDto } from '../dto/filter-activity-log.dto';
 import { CreateActivityLogData } from '../interfaces/create-activity-log.interface';
+
+const VALID_SORT_FIELDS: (keyof ActivityLog)[] = [
+  'createdAt',
+  'action',
+  'resourceType',
+];
 
 @Injectable()
 export class ActivityLogService {
   constructor(
-    @InjectRepository(UserActivityLog)
-    private readonly activityLogRepository: Repository<UserActivityLog>,
+    @InjectRepository(ActivityLog)
+    private readonly activityLogRepository: Repository<ActivityLog>,
   ) {}
 
-  async create(createActivityLogDto: CreateActivityLogData) {
-    const activityLog = this.activityLogRepository.create(createActivityLogDto);
-    return await this.activityLogRepository.save(activityLog);
+  async create(data: CreateActivityLogData): Promise<ActivityLog> {
+    const log = this.activityLogRepository.create(data);
+    return this.activityLogRepository.save(log);
   }
 
-  async findAll(filterDto: FilterActivityLogDto) {
+  async findAll(
+    filterDto: FilterActivityLogDto,
+  ): Promise<{ data: ActivityLog[]; total: number }> {
     const {
       userId,
-      adminId,
-      userType,
       action,
       resourceType,
       resourceId,
       ipAddress,
       device,
       location,
+      status,
       startDate,
       endDate,
-      isActivityLog,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
       page = 1,
       limit = 10,
+      getAll = false,
     } = filterDto;
 
-    const whereConditions: FindOptionsWhere<UserActivityLog> = {};
+    const where: FindOptionsWhere<ActivityLog> = {};
 
-    if (isActivityLog !== undefined) {
-      whereConditions.isActivityLog = isActivityLog;
-    }
-    if (userId) {
-      whereConditions.userId = userId;
-    }
-    if (adminId) {
-      whereConditions.adminId = adminId;
-    }
-    if (action) {
-      whereConditions.action = action;
-    }
-    if (resourceType) {
-      whereConditions.resourceType = resourceType;
-    }
-    if (resourceId) {
-      whereConditions.resourceId = resourceId;
-    }
-    if (ipAddress) {
-      whereConditions.ipAddress = ipAddress;
-    }
-    if (device) {
-      whereConditions.device = device;
-    }
-    if (location) {
-      whereConditions.location = location;
-    }
-
-    if (userType === 'USER') {
-      whereConditions.adminId = IsNull();
-    } else if (userType === 'ADMIN') {
-      whereConditions.userId = IsNull();
-    }
+    if (userId) where.userId = userId;
+    if (action) where.action = action;
+    if (resourceType) where.resourceType = resourceType;
+    if (resourceId) where.resourceId = resourceId;
+    if (ipAddress) where.ipAddress = ipAddress;
+    if (device) where.device = device;
+    if (location) where.location = location;
+    if (status) where.status = status;
 
     if (startDate && endDate) {
-      whereConditions.createdAt = Between(
-        new Date(startDate),
-        new Date(endDate),
-      );
+      where.createdAt = Between(new Date(startDate), new Date(endDate));
     } else if (startDate) {
-      whereConditions.createdAt = Between(new Date(startDate), new Date());
+      where.createdAt = Between(new Date(startDate), new Date());
     }
 
-    const options: FindManyOptions<UserActivityLog> = {
-      where: whereConditions,
-      relations: ['user', 'admin'],
-      skip: (page - 1) * limit,
-      take: limit,
-      order: {
-        createdAt: 'DESC',
-      },
+    const orderField = VALID_SORT_FIELDS.includes(sortBy as keyof ActivityLog)
+      ? (sortBy as keyof ActivityLog)
+      : 'createdAt';
+
+    const options: FindManyOptions<ActivityLog> = {
+      where,
+      relations: ['user'],
+      order: { [orderField]: sortOrder },
+      ...(getAll ? {} : { skip: (page - 1) * limit, take: limit }),
     };
 
     const [data, total] =
       await this.activityLogRepository.findAndCount(options);
-
     return { data, total };
   }
 
@@ -109,7 +89,7 @@ export class ActivityLogService {
     await this.activityLogRepository
       .createQueryBuilder()
       .delete()
-      .where('createdAt < :cutoffDate', { cutoffDate })
+      .where('"createdAt" < :cutoffDate', { cutoffDate })
       .execute();
   }
 }

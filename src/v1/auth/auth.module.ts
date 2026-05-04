@@ -20,7 +20,7 @@ import { RolesGuard } from './guards/roles.guard';
 import { User } from 'src/v1/user/entities/user.entity';
 import { Admin } from 'src/v1/admin/entities/admin.entity';
 import { AuthController } from './controllers/auth.controller';
-import { UserActivityLog } from 'src/v1/activity-log/entities/user-activity-log.entity';
+import { ActivityLogModule } from 'src/v1/activity-log/activity-log.module';
 import { AuthSeeder } from './seeders/auth.seeder';
 import { NotificationModule } from 'src/notification/notification.module';
 
@@ -34,9 +34,9 @@ import { NotificationModule } from 'src/notification/notification.module';
       RolePermission,
       ModuleEntity,
       RefreshToken,
-      UserActivityLog,
       CacheKey,
     ]),
+    ActivityLogModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

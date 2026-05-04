@@ -12,7 +12,7 @@ import { PermissionsGuard } from 'src/v1/auth/guards/permissions.guard';
 import { RequirePermissions } from 'src/v1/auth/decorators/permissions.decorator';
 import { PermissionModule } from 'src/v1/auth/entities/permission.entity';
 import { LogActivity } from 'src/v1/activity-log/decorators/log-activity.decorator';
-import { ActivityAction } from 'src/v1/activity-log/entities/user-activity-log.entity';
+import { LogAction } from 'src/v1/activity-log/constants/log-action.enum';
 import { SettingService } from '../services/setting.service';
 import { SMTPResponseDto } from '../dto/smtp-response.dto';
 import { ResponseUtil } from 'src/common/utils/response.util';
@@ -26,18 +26,12 @@ export class SettingController {
 
   @Post('smtp')
   @UseGuards(PermissionsGuard)
-  @RequirePermissions([
-    {
-      module: PermissionModule.SETTING,
-      permission: 'create',
-    },
-    {
-      module: PermissionModule.SETTING_SMTP,
-      permission: 'create',
-    },
-  ])
+  @RequirePermissions(
+    { module: PermissionModule.SETTING, permission: 'create' },
+    { module: PermissionModule.SETTING_SMTP, permission: 'create' },
+  )
   @LogActivity({
-    action: ActivityAction.CREATE,
+    action: LogAction.CREATE,
     description: 'SMTP settings setup successfully',
     resourceType: 'smtp-settings',
   })

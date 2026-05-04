@@ -2,7 +2,7 @@
 
 A production-ready NestJS backend template with TypeORM, PostgreSQL, Redis, JWT authentication, BullMQ queues, AWS S3 file storage, and structured logging.
 
-***
+---
 
 ## Tech Stack
 
@@ -20,7 +20,7 @@ A production-ready NestJS backend template with TypeORM, PostgreSQL, Redis, JWT 
 | Compiler       | SWC (fast builds)                          |
 | API Versioning | URI-based (`/api/v1/...`)                  |
 
-***
+---
 
 ## Full Directory Tree
 
@@ -186,7 +186,7 @@ nestjs-typeorm-backend-template/
         │   ├── dto/
         │   │   └── filter-activity-log.dto.ts
         │   ├── entities/
-        │   │   └── user-activity-log.entity.ts # activity_logs table
+        │   │   └── activity-log.entity.ts # activity_logs table
         │   ├── interceptors/
         │   │   └── activity-log.interceptor.ts # Global APP_INTERCEPTOR — auto-captures
         │   └── services/
@@ -207,7 +207,7 @@ nestjs-typeorm-backend-template/
                 └── setting.service.ts
 ```
 
-***
+---
 
 ## Architecture Overview
 
@@ -264,7 +264,7 @@ nestjs-typeorm-backend-template/
   └────────────────────────┘
 ```
 
-***
+---
 
 ## Request Lifecycle
 
@@ -302,7 +302,7 @@ Service Layer                ← Business logic, TypeORM repositories
 JSON Response
 ```
 
-***
+---
 
 ## Database Entity Relationships
 
@@ -323,7 +323,7 @@ users ──── refresh_tokens (userId)
 settings  (key-value store — SMTP config, etc.)
 ```
 
-***
+---
 
 ## Authentication Flows
 
@@ -378,7 +378,7 @@ User:
   POST /api/v1/auth/user/reset-password              → set new password
 ```
 
-***
+---
 
 ## Key Conventions
 
@@ -395,7 +395,7 @@ User:
 | Env config       | All secrets accessed via `ConfigService`; never `process.env` directly in services    |
 | SMTP config      | Stored in `settings` DB table — editable at runtime without redeployment              |
 
-***
+---
 
 ## npm Scripts Reference
 
@@ -429,7 +429,7 @@ npm run lint                # ESLint with auto-fix
 npm run format              # Prettier format
 ```
 
-***
+---
 
 ## Environment Variables
 
@@ -464,7 +464,7 @@ AWS_S3_BUCKET=
 CORS_ORIGINS=http://localhost:3001,https://yourdomain.com
 ```
 
-***
+---
 
 ## Getting Started
 
@@ -487,7 +487,7 @@ npm run start:dev
 
 The API will be available at `http://localhost:3000/api/v1/`.
 
-***
+---
 
 ## License
 
