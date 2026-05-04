@@ -51,6 +51,10 @@ import { UserRegisterAccountSetupDto } from '../dto/user-register-account-setup.
 import { UserGoogleLoginDto } from '../dto/user-google-login.dto';
 import { UserAppleLoginDto } from '../dto/user-apple-login.dto';
 import { UserForgotPasswordSendOTPDto } from '../dto/user-forgot-password-send-otp.dto';
+import {
+  getMockOtpCode,
+  isOtpMockEnabled,
+} from 'src/common/utils/otp-mock.util';
 
 @Injectable()
 export class AuthService {
@@ -1648,6 +1652,10 @@ export class AuthService {
   }
 
   private generateVerificationCode(): string {
+    if (isOtpMockEnabled(this.configService)) {
+      return getMockOtpCode(this.configService);
+    }
+
     return crypto.randomInt(100000, 999999).toString();
   }
 }

@@ -40,6 +40,12 @@ export const envValidationSchema = Joi.object({
   // Email
   SMTP_FROM_NAME: Joi.string().optional(),
 
+  // OTP
+  OTP_MOCK_ENABLED: Joi.boolean().optional(),
+  OTP_MOCK_CODE: Joi.string()
+    .pattern(/^\d{6}$/)
+    .default('000000'),
+
   // SMS
   SMS_POH_API_KEY: Joi.string().optional(),
   SMS_POH_API_SECRET_KEY: Joi.string().optional(),
@@ -47,6 +53,6 @@ export const envValidationSchema = Joi.object({
   SMS_POH_API_BRAND: Joi.string().optional(),
   SMS_POH_API_SENDER_ID: Joi.string().optional(),
 
-  // Set to true to skip real SMS calls in development/testing
+  // Set to true to skip real SMS calls outside the default development mock
   SMS_MOCK_ENABLED: Joi.boolean().default(false),
 }).options({ allowUnknown: true });

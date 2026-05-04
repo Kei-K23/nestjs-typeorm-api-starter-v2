@@ -18,6 +18,10 @@ import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
 import { AuditLogService } from 'src/v1/activity-log/services/audit-log.service';
 import { LogAction } from 'src/v1/activity-log/constants/log-action.enum';
+import {
+  getMockOtpCode,
+  isOtpMockEnabled,
+} from 'src/common/utils/otp-mock.util';
 
 @Injectable()
 export class TwoFactorService {
@@ -69,7 +73,11 @@ export class TwoFactorService {
     });
 
     await this.auditLogService
-      .create({ adminId: userId, action: LogAction.ENABLE_TWO_FACTOR, description: '2FA setup initiated, verification code sent' })
+      .create({
+        adminId: userId,
+        action: LogAction.ENABLE_TWO_FACTOR,
+        description: '2FA setup initiated, verification code sent',
+      })
       .catch((err) => this.logger.error('Failed to write audit log:', err));
 
     this.logger.log(`2FA verification code queued for user ${userId}`);
@@ -122,7 +130,11 @@ export class TwoFactorService {
     await this.adminRepository.update(userId, { twoFactorEnabled: true });
 
     await this.auditLogService
-      .create({ adminId: userId, action: LogAction.VERIFY_TWO_FACTOR, description: '2FA enabled successfully' })
+      .create({
+        adminId: userId,
+        action: LogAction.VERIFY_TWO_FACTOR,
+        description: '2FA enabled successfully',
+      })
       .catch((err) => this.logger.error('Failed to write audit log:', err));
 
     this.logger.log(`2FA enabled for user ${userId}`);
@@ -157,7 +169,11 @@ export class TwoFactorService {
     await this.adminRepository.update(userId, { twoFactorEnabled: false });
 
     await this.auditLogService
-      .create({ adminId: userId, action: LogAction.DISABLE_TWO_FACTOR, description: '2FA disabled successfully' })
+      .create({
+        adminId: userId,
+        action: LogAction.DISABLE_TWO_FACTOR,
+        description: '2FA disabled successfully',
+      })
       .catch((err) => this.logger.error('Failed to write audit log:', err));
 
     this.logger.log(`2FA disabled for user ${userId}`);
@@ -263,6 +279,10 @@ export class TwoFactorService {
   }
 
   private generateVerificationCode(): string {
+    if (isOtpMockEnabled(this.configService)) {
+      return getMockOtpCode(this.configService);
+    }
+
     return crypto.randomInt(100000, 999999).toString();
   }
 }

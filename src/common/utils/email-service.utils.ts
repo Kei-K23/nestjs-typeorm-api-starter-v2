@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as nodemailer from 'nodemailer';
 import { Setting } from 'src/v1/setting/entities/setting.entity';
+import { ConfigService } from '@nestjs/config';
+import { isOtpMockEnabled } from './otp-mock.util';
 
 interface SmtpConfig {
   smtpHost: string;
@@ -25,6 +27,7 @@ export class EmailServiceUtils {
   constructor(
     @InjectRepository(Setting)
     private settingRepository: Repository<Setting>,
+    private readonly configService: ConfigService,
   ) {}
 
   private async getTransporter() {
@@ -107,6 +110,11 @@ export class EmailServiceUtils {
     fromUsername: string;
     expiresIn: number;
   }): Promise<void> {
+    if (isOtpMockEnabled(this.configService)) {
+      this.logger.log(`Mock 2FA code accepted for ${email}`);
+      return;
+    }
+
     try {
       const transporter = await this.getTransporter();
       const smtpSettings = await this.getSMTPSettings();
@@ -209,6 +217,11 @@ export class EmailServiceUtils {
     fromUsername: string;
     expiresIn: number;
   }): Promise<void> {
+    if (isOtpMockEnabled(this.configService)) {
+      this.logger.log(`Mock password reset code accepted for ${email}`);
+      return;
+    }
+
     try {
       const transporter = await this.getTransporter();
       const smtpSettings = await this.getSMTPSettings();

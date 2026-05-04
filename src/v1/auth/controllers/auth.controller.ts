@@ -41,6 +41,7 @@ import { UserRegisterAccountSetupDto } from '../dto/user-register-account-setup.
 import { UserRegisterPasswordSetupDto } from '../dto/user-register-password-setup.dto';
 import { UserGoogleLoginDto } from '../dto/user-google-login.dto';
 import { UserAppleLoginDto } from '../dto/user-apple-login.dto';
+import { Public } from '../decorators/public.decorator';
 
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
@@ -232,8 +233,8 @@ export class AuthController {
     return ResponseUtil.success(null, 'Profile deleted successfully');
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('verify-2fa')
+  @Public()
   @HttpCode(200)
   async verifyTwoFactor(
     @Body() verifyTwoFactorDto: VerifyTwoFactorDto,
@@ -248,6 +249,7 @@ export class AuthController {
   }
 
   @Post('enable-2fa-verify')
+  @Public()
   @HttpCode(200)
   async enableTwoFactorVerify(@Body() verifyTwoFactorDto: VerifyTwoFactorDto) {
     const result = await this.twoFactorService.verifyTwoFactor(

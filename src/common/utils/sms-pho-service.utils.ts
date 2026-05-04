@@ -5,6 +5,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import {
+  DEFAULT_MOCK_OTP_CODE,
+  getMockOtpCode,
+  isOtpMockEnabled,
+} from './otp-mock.util';
 
 @Injectable()
 export class SMSPhoServiceUtils {
@@ -14,13 +19,15 @@ export class SMSPhoServiceUtils {
   private readonly fromName: string;
   private readonly enabled: boolean;
   private readonly mockEnabled: boolean;
+  private readonly mockOtp: string;
 
-  /** Mock OTP used when SMS_MOCK_ENABLED=true. Never hardcoded in business logic. */
-  static readonly MOCK_OTP = '000000';
+  /** Mock request ID used when OTP mocks are enabled. */
+  static readonly MOCK_OTP = DEFAULT_MOCK_OTP_CODE;
   static readonly MOCK_REQUEST_ID = 'mock-request-id';
 
   constructor(private readonly config: ConfigService) {
-    this.mockEnabled = config.get<string>('SMS_MOCK_ENABLED') === 'true';
+    this.mockEnabled = isOtpMockEnabled(config);
+    this.mockOtp = getMockOtpCode(config);
 
     if (this.mockEnabled) {
       this.enabled = false;
@@ -103,7 +110,7 @@ export class SMSPhoServiceUtils {
     if (this.mockEnabled) {
       const isValid =
         params.requestId === SMSPhoServiceUtils.MOCK_REQUEST_ID &&
-        params.code === SMSPhoServiceUtils.MOCK_OTP;
+        params.code === this.mockOtp;
       if (!isValid) {
         throw new BadRequestException('Invalid OTP or request ID');
       }
