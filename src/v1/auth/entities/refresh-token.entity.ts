@@ -26,8 +26,8 @@ export class RefreshToken extends AuditEntity {
   @JoinColumn({ name: 'adminId' })
   admin: Admin;
 
-  @Column()
-  expiresAt: Date;
+  @Column({ type: 'timestamptz', nullable: true })
+  expiresAt: Date | null;
 
   @Column({ default: false })
   isRevoked: boolean;

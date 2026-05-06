@@ -44,6 +44,14 @@ import { VerifyPasswordResetOTPCodeDto } from '../dto/verify-password-reset-otp-
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { UserRegisterOTPRequestDto } from '../dto/user-register-otp-request.dto';
 import { SMSPhoServiceUtils } from 'src/common/utils/sms-pho-service.utils';
+import {
+  nowUtc,
+  addMinutes,
+  addDays,
+  isExpired,
+  OTP_TTL_MINUTES,
+  REFRESH_TOKEN_TTL_DAYS,
+} from 'src/common/utils/date-time.util';
 import { FileUploadService } from 'src/common/services/file-upload.service';
 import { UserRegisterOTPVerifyDto } from '../dto/user-register-otp-verify.dto';
 import { UserRegisterPasswordSetupDto } from '../dto/user-register-password-setup.dto';
@@ -253,7 +261,7 @@ export class AuthService {
     }
 
     user.fcmToken = loginDto.fcmToken;
-    user.lastLoginAt = new Date();
+    user.lastLoginAt = nowUtc();
     await this.userRepository.save(user);
 
     return this.completeUserLogin(user, request);
@@ -285,7 +293,7 @@ export class AuthService {
         registrationStage: UserRegistrationStage.PASSWORD_SETUP,
         fcmToken,
         loginProvider: LoginProvider.APPLE,
-        lastLoginAt: new Date(),
+        lastLoginAt: nowUtc(),
       });
 
       await this.userRepository.save(user);
@@ -329,7 +337,7 @@ export class AuthService {
       }
     }
 
-    user.lastLoginAt = new Date();
+    user.lastLoginAt = nowUtc();
     if (fcmToken) {
       user.fcmToken = fcmToken;
     }
@@ -655,7 +663,7 @@ export class AuthService {
     const refreshToken = await this.generateRefreshToken(admin.id, 'admin');
 
     const previousLastLoginAt = admin.lastLoginAt;
-    const lastLoginAt = new Date();
+    const lastLoginAt = nowUtc();
 
     await this.adminRepository.update(admin.id, { lastLoginAt });
     await this.logAdminAudit(
@@ -709,9 +717,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    const now = new Date();
-
-    if (refreshToken.expiresAt < now) {
+    if (isExpired(refreshToken.expiresAt)) {
       refreshToken.isRevoked = true;
       await this.refreshTokenRepository.save(refreshToken);
 
@@ -791,7 +797,7 @@ export class AuthService {
     );
 
     const updateData: any = {
-      lastLogoutAt: new Date().toISOString(),
+      lastLogoutAt: nowUtc(),
     };
 
     if (clearFcmToken) {
@@ -830,8 +836,7 @@ export class AuthService {
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    const expiresAt = addDays(REFRESH_TOKEN_TTL_DAYS);
 
     const refreshToken = this.refreshTokenRepository.create({
       token: tokenHash,
@@ -1130,7 +1135,7 @@ export class AuthService {
       );
 
       const code = this.generateVerificationCode();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      const expiresAt = addMinutes(OTP_TTL_MINUTES);
 
       const cacheKey = this.cacheKeyRepository.create({
         userId: null,
@@ -1177,7 +1182,7 @@ export class AuthService {
     );
 
     const code = this.generateVerificationCode();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const expiresAt = addMinutes(OTP_TTL_MINUTES);
 
     const cacheKey = this.cacheKeyRepository.create({
       userId: user.id,
@@ -1236,7 +1241,7 @@ export class AuthService {
     }
 
     // Check if code has expired
-    if (Date.now() > otpVerification.expiresAt.getTime()) {
+    if (isExpired(otpVerification.expiresAt)) {
       otpVerification.status = CacheKeyStatus.EXPIRED;
       await this.cacheKeyRepository.save(otpVerification);
       this.logger.warn(
@@ -1392,7 +1397,7 @@ export class AuthService {
       'Forgot password OTP sent',
     );
 
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const expiresAt = addMinutes(OTP_TTL_MINUTES);
     const message =
       "[{brand}] Dear customer, your OTP code is {code} for password reset. It'll expire in 30 minutes.";
 
@@ -1450,7 +1455,7 @@ export class AuthService {
       throw new BadRequestException('Invalid verification code');
     }
 
-    if (otpVerification.expiresAt < new Date()) {
+    if (isExpired(otpVerification.expiresAt)) {
       otpVerification.status = CacheKeyStatus.EXPIRED;
       await this.cacheKeyRepository.save(otpVerification);
       this.logger.warn(`Verification code expired for account ID '${userId}'`);
@@ -1592,7 +1597,7 @@ export class AuthService {
         registrationStage: UserRegistrationStage.PASSWORD_SETUP,
         fcmToken,
         loginProvider: LoginProvider.GOOGLE,
-        lastLoginAt: new Date(),
+        lastLoginAt: nowUtc(),
       });
 
       await this.userRepository.save(user);
@@ -1636,7 +1641,7 @@ export class AuthService {
       }
     }
 
-    user.lastLoginAt = new Date();
+    user.lastLoginAt = nowUtc();
     if (fcmToken) {
       user.fcmToken = fcmToken;
     }

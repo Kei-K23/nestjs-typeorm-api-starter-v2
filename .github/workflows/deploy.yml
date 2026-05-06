@@ -68,6 +68,8 @@ jobs:
             # run migrations
             npm run migration:run:prod
 
+            export TZ=UTC
+
             # restart app
             pm2 reload ${{ secrets.FOLDER_NAME }} || \
             pm2 start dist/src/main.js --name ${{ secrets.FOLDER_NAME }} || \

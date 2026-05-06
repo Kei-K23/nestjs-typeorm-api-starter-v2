@@ -73,10 +73,10 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', nullable: true })
   fcmToken: string | null;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   lastLoginAt: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   lastLogoutAt: Date;
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)

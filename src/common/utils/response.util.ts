@@ -4,6 +4,7 @@ import {
   ResponseMeta,
   ErrorResponse,
 } from '../interfaces/api-response.interface';
+import { nowIso } from './date-time.util';
 
 export class ResponseUtil {
   /**
@@ -23,7 +24,7 @@ export class ResponseUtil {
       data,
       meta,
       apiVersion,
-      timestamp: new Date().toISOString(),
+      timestamp: nowIso(),
     };
   }
 
@@ -96,7 +97,7 @@ export class ResponseUtil {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       details,
       apiVersion,
-      timestamp: new Date().toISOString(),
+      timestamp: nowIso(),
     };
   }
 

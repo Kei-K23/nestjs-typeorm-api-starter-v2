@@ -68,6 +68,6 @@ export class AuditLog {
   @Column({ type: 'json', nullable: true })
   metadata: Record<string, unknown>;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

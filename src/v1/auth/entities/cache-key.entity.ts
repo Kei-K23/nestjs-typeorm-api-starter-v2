@@ -47,7 +47,7 @@ export class CacheKey extends AuditEntity {
   @Column()
   code: string;
 
-  @Column()
+  @Column({ type: 'timestamptz' })
   expiresAt: Date;
 
   @Column({ type: 'varchar', nullable: true })

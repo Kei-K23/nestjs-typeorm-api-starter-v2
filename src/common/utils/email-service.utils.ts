@@ -5,6 +5,7 @@ import * as nodemailer from 'nodemailer';
 import { Setting } from 'src/v1/setting/entities/setting.entity';
 import { ConfigService } from '@nestjs/config';
 import { isOtpMockEnabled } from './otp-mock.util';
+import { SMTP_CACHE_TTL_MS as SMTP_TTL } from './date-time.util';
 
 interface SmtpConfig {
   smtpHost: string;
@@ -22,7 +23,7 @@ export class EmailServiceUtils {
   private readonly logger = new Logger(EmailServiceUtils.name);
   private smtpConfigCache: SmtpConfig | null = null;
   private smtpConfigCachedAt = 0;
-  private readonly SMTP_CACHE_TTL_MS = 5 * 60 * 1000;
+  private readonly SMTP_CACHE_TTL_MS = SMTP_TTL;
 
   constructor(
     @InjectRepository(Setting)

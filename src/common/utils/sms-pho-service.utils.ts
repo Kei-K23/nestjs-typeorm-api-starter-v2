@@ -10,6 +10,7 @@ import {
   getMockOtpCode,
   isOtpMockEnabled,
 } from './otp-mock.util';
+import { nowIso } from './date-time.util';
 
 @Injectable()
 export class SMSPhoServiceUtils {
@@ -116,7 +117,7 @@ export class SMSPhoServiceUtils {
       }
       return {
         success: true,
-        verifiedAt: new Date().toISOString(),
+        verifiedAt: nowIso(),
         to: 'mock',
       };
     }

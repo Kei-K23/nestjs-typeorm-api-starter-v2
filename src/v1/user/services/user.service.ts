@@ -13,6 +13,7 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
 import { FileUploadService } from 'src/common/services/file-upload.service';
 import { attachAuditLogMetadata } from 'src/v1/activity-log/utils/audit-log-metadata.util';
+import { parseRangeStart, parseRangeEnd } from 'src/common/utils/date-time.util';
 
 @Injectable()
 export class UserService {
@@ -82,13 +83,13 @@ export class UserService {
 
     if (filter.startDate) {
       qb.andWhere('user.createdAt >= :startDate', {
-        startDate: new Date(filter.startDate),
+        startDate: parseRangeStart(filter.startDate),
       });
     }
 
     if (filter.endDate) {
       qb.andWhere('user.createdAt <= :endDate', {
-        endDate: new Date(filter.endDate),
+        endDate: parseRangeEnd(filter.endDate),
       });
     }
 

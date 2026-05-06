@@ -47,8 +47,11 @@ export class Admin extends BaseEntity {
   @Column({ default: false })
   twoFactorEnabled: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   lastLoginAt: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  lastLogoutAt: Date;
 
   @BeforeInsert()
   @BeforeUpdate()

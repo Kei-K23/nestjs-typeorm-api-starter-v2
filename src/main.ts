@@ -1,3 +1,5 @@
+process.env.TZ = 'UTC';
+
 import { NestFactory, Reflector } from '@nestjs/core';
 import {
   ClassSerializerInterceptor,
@@ -10,6 +12,7 @@ import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/config/logger.config';
 import helmet from 'helmet';
 import { ConfigService } from '@nestjs/config';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
@@ -107,6 +110,7 @@ async function bootstrap() {
 
   console.log(`Application is running on port ${port}`);
   console.log(`Environment: ${configService.get('NODE_ENV', 'development')}`);
+  console.log(`TZ: ${configService.get('TZ', 'UTC')}`);
 
   // Graceful shutdown on SIGTERM (container restarts, PM2 reloads)
   process.on('SIGTERM', async () => {

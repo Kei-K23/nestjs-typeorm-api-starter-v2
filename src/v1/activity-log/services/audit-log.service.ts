@@ -4,6 +4,13 @@ import { Between, FindManyOptions, FindOptionsWhere, Repository } from 'typeorm'
 import { AuditLog } from '../entities/audit-log.entity';
 import { FilterAuditLogDto } from '../dto/filter-audit-log.dto';
 import { CreateAuditLogData } from '../interfaces/create-audit-log.interface';
+import {
+  nowUtc,
+  parseRangeStart,
+  parseRangeEnd,
+  subtractDays,
+  LOG_RETENTION_DAYS,
+} from 'src/common/utils/date-time.util';
 
 const VALID_SORT_FIELDS: (keyof AuditLog)[] = [
   'createdAt',
@@ -56,9 +63,9 @@ export class AuditLogService {
     if (status) where.status = status;
 
     if (startDate && endDate) {
-      where.createdAt = Between(new Date(startDate), new Date(endDate));
+      where.createdAt = Between(parseRangeStart(startDate), parseRangeEnd(endDate));
     } else if (startDate) {
-      where.createdAt = Between(new Date(startDate), new Date());
+      where.createdAt = Between(parseRangeStart(startDate), nowUtc());
     }
 
     const orderField = VALID_SORT_FIELDS.includes(sortBy as keyof AuditLog)
@@ -76,9 +83,8 @@ export class AuditLogService {
     return { data, total };
   }
 
-  async deleteOldLogs(daysToKeep: number = 90): Promise<void> {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+  async deleteOldLogs(daysToKeep: number = LOG_RETENTION_DAYS): Promise<void> {
+    const cutoffDate = subtractDays(daysToKeep);
 
     await this.auditLogRepository
       .createQueryBuilder()

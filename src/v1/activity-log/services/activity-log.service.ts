@@ -9,6 +9,13 @@ import {
 import { ActivityLog } from '../entities/activity-log.entity';
 import { FilterActivityLogDto } from '../dto/filter-activity-log.dto';
 import { CreateActivityLogData } from '../interfaces/create-activity-log.interface';
+import {
+  nowUtc,
+  parseRangeStart,
+  parseRangeEnd,
+  subtractDays,
+  LOG_RETENTION_DAYS,
+} from 'src/common/utils/date-time.util';
 
 const VALID_SORT_FIELDS: (keyof ActivityLog)[] = [
   'createdAt',
@@ -61,9 +68,9 @@ export class ActivityLogService {
     if (status) where.status = status;
 
     if (startDate && endDate) {
-      where.createdAt = Between(new Date(startDate), new Date(endDate));
+      where.createdAt = Between(parseRangeStart(startDate), parseRangeEnd(endDate));
     } else if (startDate) {
-      where.createdAt = Between(new Date(startDate), new Date());
+      where.createdAt = Between(parseRangeStart(startDate), nowUtc());
     }
 
     const orderField = VALID_SORT_FIELDS.includes(sortBy as keyof ActivityLog)
@@ -82,9 +89,8 @@ export class ActivityLogService {
     return { data, total };
   }
 
-  async deleteOldLogs(daysToKeep: number = 90): Promise<void> {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+  async deleteOldLogs(daysToKeep: number = LOG_RETENTION_DAYS): Promise<void> {
+    const cutoffDate = subtractDays(daysToKeep);
 
     await this.activityLogRepository
       .createQueryBuilder()

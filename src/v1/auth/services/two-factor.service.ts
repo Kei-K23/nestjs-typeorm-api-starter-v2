@@ -22,6 +22,11 @@ import {
   getMockOtpCode,
   isOtpMockEnabled,
 } from 'src/common/utils/otp-mock.util';
+import {
+  addMinutes,
+  isExpired,
+  OTP_TTL_MINUTES,
+} from 'src/common/utils/date-time.util';
 
 @Injectable()
 export class TwoFactorService {
@@ -49,7 +54,7 @@ export class TwoFactorService {
 
     // Generate verification code
     const code = this.generateVerificationCode();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = addMinutes(OTP_TTL_MINUTES);
 
     // Create cache key record
     const cacheKey = this.cacheKeyRepository.create({
@@ -100,7 +105,7 @@ export class TwoFactorService {
     }
 
     // Check if code has expired
-    if (new Date() > cacheKey.expiresAt) {
+    if (isExpired(cacheKey.expiresAt)) {
       cacheKey.status = CacheKeyStatus.EXPIRED;
       await this.cacheKeyRepository.save(cacheKey);
       throw new BadRequestException('Verification code has expired');
@@ -202,7 +207,7 @@ export class TwoFactorService {
 
     // Generate new verification code
     const code = this.generateVerificationCode();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = addMinutes(OTP_TTL_MINUTES);
 
     // Create new verification record
     const cacheKey = this.cacheKeyRepository.create({
@@ -244,7 +249,7 @@ export class TwoFactorService {
     }
 
     // Check if code has expired
-    if (new Date() > cacheKey.expiresAt) {
+    if (isExpired(cacheKey.expiresAt)) {
       cacheKey.status = CacheKeyStatus.EXPIRED;
       await this.cacheKeyRepository.save(cacheKey);
       return false;
